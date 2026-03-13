@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Brand } from '../data/brands';
-import { MergedContext } from '../data/csvParser';
+import { MergedContext, levelNames } from '../data/csvParser';
 import { useTranslation } from '../i18n/translations';
 
 interface ContextListProps {
   brand: Brand;
   contexts: MergedContext[];
+  onSelectContext: (ctx: MergedContext) => void;
 }
 
 function slugify(text: string): string {
@@ -29,18 +30,7 @@ function buildLegacyUrl(ctx: MergedContext): { template: string; example: string
   return { template, example };
 }
 
-const levelNames: Record<string, string> = {
-  '200': 'Country',
-  '300': 'MacroRegion',
-  '400': 'Region',
-  '500': 'MicroRegion',
-  '600': 'Province',
-  '800': 'Municipality',
-  '900': 'Borough',
-  '1000': 'Neighborhood',
-  '1100': 'MicroNeighborhood',
-  '1200': 'Bloc',
-};
+const levelNamesLocal = levelNames;
 
 function getCharacteristics(ctx: MergedContext): { key: string; value: string }[] {
   const chars: { key: string; value: string }[] = [];
@@ -51,7 +41,7 @@ function getCharacteristics(ctx: MergedContext): { key: string; value: string }[
   return chars;
 }
 
-export const ContextList: React.FC<ContextListProps> = ({ brand, contexts }) => {
+export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, onSelectContext }) => {
   const t = useTranslation(brand.locale);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [query, setQuery] = useState('');
@@ -222,7 +212,7 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts }) => 
                     const isEven = idx % 2 === 0;
 
                     return (
-                      <tr key={ctx.id} className={`group transition-colors duration-150 hover:bg-blue-50/40 h-24 ${isEven ? 'bg-white' : 'bg-gray-50/30'}`}>
+                      <tr key={ctx.id} onClick={() => onSelectContext(ctx)} className={`group transition-colors duration-150 cursor-pointer hover:bg-indigo-50/50 h-24 ${isEven ? 'bg-white' : 'bg-gray-50/30'}`}>
                         {/* Critères de recherche */}
                         <td className="px-5 py-3 min-w-[200px] border-b border-r border-gray-200 align-middle">
                           <p className="font-semibold text-gray-900 text-[13px] leading-tight">{ctx.alias}</p>
@@ -299,7 +289,7 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts }) => 
                           <div className="flex flex-wrap gap-1">
                             {ctx.openedLevels.map((level, i) => (
                               <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-violet-50 text-violet-700 ring-1 ring-violet-200/60">
-                                {levelNames[level] ?? level}
+                                {levelNamesLocal[level] ?? level}
                               </span>
                             ))}
                           </div>

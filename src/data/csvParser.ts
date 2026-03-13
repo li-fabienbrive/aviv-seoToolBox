@@ -52,9 +52,23 @@ export interface SerpContextRow {
 
 export interface SerpTextConfigRow {
   ID: string;
+  Title: string;
+  TitleWithCountSingular: string;
   TitleWithCountPlural: string;
+  HeaderSingular: string;
   HeaderPlural: string;
+  MetaDescSingular: string;
   MetaDescPlural: string;
+  LinkText: string;
+  BreadcrumbLinkText: string;
+  LinkboxLinkText: string;
+  TopLinkboxLinkText: string;
+}
+
+export interface OpenedLevel {
+  code: string;
+  name: string;
+  forcedUntil: string | null;
 }
 
 export interface MergedContext {
@@ -68,15 +82,50 @@ export interface MergedContext {
   price: string;
   feature: string;
   openedLevels: string[];
+  openedLevelsDetailed: OpenedLevel[];
+  // All text config fields
+  title: string;
+  titleWithCountSingular: string;
   titleWithCountPlural: string;
+  headerSingular: string;
   headerPlural: string;
+  metaDescSingular: string;
   metaDescPlural: string;
+  linkText: string;
+  breadcrumbLinkText: string;
+  linkboxLinkText: string;
+  topLinkboxLinkText: string;
   indexation: string;
 }
 
 function hasTemporaryLevels(openedLevels: string): boolean {
   if (!openedLevels) return false;
   return openedLevels.split('|').some(l => l.includes(':'));
+}
+
+export const levelNames: Record<string, string> = {
+  '200': 'Country',
+  '300': 'MacroRegion',
+  '400': 'Region',
+  '500': 'MicroRegion',
+  '600': 'Province',
+  '800': 'Municipality',
+  '900': 'Borough',
+  '1000': 'Neighborhood',
+  '1100': 'MicroNeighborhood',
+  '1200': 'Bloc',
+};
+
+function parseOpenedLevels(raw: string): OpenedLevel[] {
+  if (!raw) return [];
+  return raw.split('|').map(entry => {
+    const [code, date] = entry.split(':');
+    return {
+      code: code.trim(),
+      name: levelNames[code.trim()] ?? code.trim(),
+      forcedUntil: date?.trim() || null,
+    };
+  });
 }
 
 export function mergeContextData(contextCsv: string, textConfigCsv: string): MergedContext[] {
@@ -101,9 +150,18 @@ export function mergeContextData(contextCsv: string, textConfigCsv: string): Mer
       price: ctx.Price,
       feature: ctx.Feature,
       openedLevels: levels,
+      openedLevelsDetailed: parseOpenedLevels(ctx.OpenedLevels),
+      title: text?.Title ?? '',
+      titleWithCountSingular: text?.TitleWithCountSingular ?? '',
       titleWithCountPlural: text?.TitleWithCountPlural ?? '',
+      headerSingular: text?.HeaderSingular ?? '',
       headerPlural: text?.HeaderPlural ?? '',
+      metaDescSingular: text?.MetaDescSingular ?? '',
       metaDescPlural: text?.MetaDescPlural ?? '',
+      linkText: text?.LinkText ?? '',
+      breadcrumbLinkText: text?.BreadcrumbLinkText ?? '',
+      linkboxLinkText: text?.LinkboxLinkText ?? '',
+      topLinkboxLinkText: text?.TopLinkboxLinkText ?? '',
       indexation: hasTemporaryLevels(ctx.OpenedLevels) ? 'temporary' : 'auto',
     };
   });

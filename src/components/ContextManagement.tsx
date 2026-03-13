@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Brand } from '../data/brands';
 import { mergeContextData, MergedContext } from '../data/csvParser';
 import { ContextList } from './ContextList';
+import { ContextDetailPage } from './ContextDetailPage';
 
 import slContextCsv from '../data/sl/SerpContext.csv?raw';
 import slTextCsv from '../data/sl/SerpTextConfig.csv?raw';
@@ -27,11 +28,24 @@ export const ContextManagement: React.FC<ContextManagementProps> = ({ brand }) =
     return mergeContextData(csv.context, csv.text);
   }, [brand.id]);
 
+  const [selectedContext, setSelectedContext] = useState<MergedContext | null>(null);
+
+  if (selectedContext) {
+    return (
+      <ContextDetailPage
+        brand={brand}
+        context={selectedContext}
+        onBack={() => setSelectedContext(null)}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col h-full">
       <ContextList
         brand={brand}
         contexts={contexts}
+        onSelectContext={setSelectedContext}
       />
     </div>
   );
