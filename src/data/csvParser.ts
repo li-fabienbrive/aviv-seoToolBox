@@ -74,11 +74,9 @@ export interface MergedContext {
   indexation: string;
 }
 
-const indexations = ['auto', 'forced', 'temporary'];
-
-function seededRandom(seed: number): number {
-  const x = Math.sin(seed) * 10000;
-  return x - Math.floor(x);
+function hasTemporaryLevels(openedLevels: string): boolean {
+  if (!openedLevels) return false;
+  return openedLevels.split('|').some(l => l.includes(':'));
 }
 
 export function mergeContextData(contextCsv: string, textConfigCsv: string): MergedContext[] {
@@ -106,7 +104,7 @@ export function mergeContextData(contextCsv: string, textConfigCsv: string): Mer
       titleWithCountPlural: text?.TitleWithCountPlural ?? '',
       headerPlural: text?.HeaderPlural ?? '',
       metaDescPlural: text?.MetaDescPlural ?? '',
-      indexation: indexations[Math.floor(seededRandom(parseInt(ctx.ID, 10)) * 3)],
+      indexation: hasTemporaryLevels(ctx.OpenedLevels) ? 'temporary' : 'auto',
     };
   });
 }

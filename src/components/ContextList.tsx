@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
+import { X } from 'lucide-react';
 import { Brand } from '../data/brands';
 import { MergedContext } from '../data/csvParser';
 import { useTranslation } from '../i18n/translations';
@@ -28,6 +29,19 @@ function buildLegacyUrl(ctx: MergedContext): { template: string; example: string
   return { template, example };
 }
 
+const levelNames: Record<string, string> = {
+  '200': 'Country',
+  '300': 'MacroRegion',
+  '400': 'Region',
+  '500': 'MicroRegion',
+  '600': 'Province',
+  '800': 'Municipality',
+  '900': 'Borough',
+  '1000': 'Neighborhood',
+  '1100': 'MicroNeighborhood',
+  '1200': 'Bloc',
+};
+
 function getCharacteristics(ctx: MergedContext): { key: string; value: string }[] {
   const chars: { key: string; value: string }[] = [];
   if (ctx.numberOfRooms) chars.push({ key: 'rooms', value: ctx.numberOfRooms });
@@ -39,121 +53,281 @@ function getCharacteristics(ctx: MergedContext): { key: string; value: string }[
 
 export const ContextList: React.FC<ContextListProps> = ({ brand, contexts }) => {
   const t = useTranslation(brand.locale);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [query, setQuery] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Build all available tags from contexts
+  const allTags = useMemo(() => {
+    const tags = new Set<string>();
+    contexts.forEach(ctx => {
+      if (ctx.distributionType) tags.add(ctx.distributionType);
+      if (ctx.estateType) tags.add(ctx.estateType.replace(/_/g, ' '));
+      if (ctx.estateSubType) tags.add(ctx.estateSubType.replace(/_/g, ' '));
+      if (ctx.feature) tags.add(`feature:${ctx.feature}`);
+      if (ctx.numberOfRooms) tags.add(`rooms:${ctx.numberOfRooms}`);
+      if (ctx.numberOfBedrooms) tags.add(`bedrooms:${ctx.numberOfBedrooms}`);
+      if (ctx.price) tags.add(`price:${ctx.price}`);
+    });
+    return Array.from(tags).sort();
+  }, [contexts]);
+
+  // Filter suggestions based on query, exclude already selected
+  const suggestions = useMemo(() => {
+    if (!query.trim()) return [];
+    const q = query.toLowerCase();
+    return allTags
+      .filter(tag => tag.toLowerCase().includes(q) && !selectedTags.includes(tag))
+      .slice(0, 8);
+  }, [query, allTags, selectedTags]);
+
+  // Filter contexts by selected tags
+  const filteredContexts = useMemo(() => {
+    if (selectedTags.length === 0) return contexts;
+    return contexts.filter(ctx => {
+      return selectedTags.every(tag => {
+        if (ctx.distributionType === tag) return true;
+        if (ctx.estateType.replace(/_/g, ' ') === tag) return true;
+        if (ctx.estateSubType && ctx.estateSubType.replace(/_/g, ' ') === tag) return true;
+        if (tag.startsWith('feature:') && ctx.feature === tag.split(':')[1]) return true;
+        if (tag.startsWith('rooms:') && ctx.numberOfRooms === tag.split(':')[1]) return true;
+        if (tag.startsWith('bedrooms:') && ctx.numberOfBedrooms === tag.split(':')[1]) return true;
+        if (tag.startsWith('price:') && ctx.price === tag.split(':')[1]) return true;
+        return false;
+      });
+    });
+  }, [contexts, selectedTags]);
+
+  const addTag = (tag: string) => {
+    setSelectedTags(prev => [...prev, tag]);
+    setQuery('');
+    setShowDropdown(false);
+    inputRef.current?.focus();
+  };
+
+  const removeTag = (tag: string) => {
+    setSelectedTags(prev => prev.filter(t => t !== tag));
+  };
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   return (
-    <div className="flex flex-col h-full bg-gray-50">
-      <div className="sticky top-0 bg-white border-b border-gray-200 p-6 z-10">
-        <div className="flex items-center space-x-4">
-          <div className={`w-4 h-4 rounded-full ${brand.colors.primary}`}></div>
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900">{t.contextManagement.title} - {brand.name}</h1>
-            <p className="text-sm text-gray-600 mt-1">{contexts.length} contexts</p>
+    <div className="flex flex-col h-full bg-gradient-to-br from-gray-50 to-gray-100/50">
+      {/* Header */}
+      <div className="sticky top-0 bg-white/80 backdrop-blur-md border-b border-gray-200/60 px-8 py-5 z-10">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-4">
+            <div className={`w-3 h-3 rounded-full ${brand.colors.primary} ring-4 ring-opacity-20 ${brand.colors.secondary}`}></div>
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{t.contextManagement.title} — {brand.name}</h1>
+              <p className="text-xs text-gray-500 mt-0.5 font-medium">{filteredContexts.length} / {contexts.length} contextes</p>
+            </div>
           </div>
+        </div>
+
+        {/* Selected tags */}
+        {selectedTags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-3">
+            {selectedTags.map(tag => (
+              <span
+                key={tag}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-100 text-indigo-700 ring-1 ring-indigo-200/60"
+              >
+                {tag}
+                <button onClick={() => removeTag(tag)} className="ml-0.5 hover:text-indigo-900 transition-colors">
+                  <X className="w-3 h-3" />
+                </button>
+              </span>
+            ))}
+            <button
+              onClick={() => setSelectedTags([])}
+              className="text-xs text-gray-400 hover:text-gray-600 transition-colors px-2 py-1"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
+
+        {/* Search input with suggestions */}
+        <div className="relative" ref={dropdownRef}>
+          <input
+            ref={inputRef}
+            type="text"
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setShowDropdown(true);
+            }}
+            onFocus={() => { if (query.trim()) setShowDropdown(true); }}
+            placeholder="Filter by tag... (e.g. Buy, Apartment, rooms:3, feature:Balcony)"
+            className="w-full px-4 py-2.5 text-sm border border-gray-300 rounded-lg bg-white focus:ring-2 focus:ring-indigo-200 focus:border-indigo-400 outline-none transition-all placeholder:text-gray-400"
+          />
+          {showDropdown && suggestions.length > 0 && (
+            <div className="absolute left-0 right-0 top-full mt-1 bg-white rounded-lg shadow-lg border border-gray-200 z-50 max-h-56 overflow-y-auto">
+              {suggestions.map(tag => (
+                <button
+                  key={tag}
+                  onClick={() => addTag(tag)}
+                  className="w-full text-left px-4 py-2.5 text-sm hover:bg-indigo-50 transition-colors flex items-center gap-2"
+                >
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-indigo-400"></span>
+                  <span className="text-gray-800">{tag}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
+      {/* Table */}
       <div className="flex-1 overflow-x-auto overflow-y-auto">
-        {contexts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full p-6">
-            <p className="text-gray-600 font-medium">No contexts found</p>
+        {filteredContexts.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full p-12">
+            <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
+              <span className="text-2xl text-gray-400">📋</span>
+            </div>
+            <p className="text-gray-500 font-medium text-sm">Aucun contexte trouvé</p>
           </div>
         ) : (
-          <div className="p-6">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left text-xs font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-200">
-                  <th className="pb-3 pr-4">Critères de recherche</th>
-                  <th className="pb-3 pr-4">Contenu SEO</th>
-                  <th className="pb-3 pr-4">WL Url</th>
-                  <th className="pb-3 pr-4">Legacy Url</th>
-                  <th className="pb-3 pr-4">Opened Levels</th>
-                  <th className="pb-3 pr-4">Indexation</th>
-                  <th className="pb-3">Caractéristiques</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {contexts.map(ctx => {
-                  const wl = buildWLUrl(ctx);
-                  const legacy = buildLegacyUrl(ctx);
-                  const chars = getCharacteristics(ctx);
+          <div className="px-6 py-4">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 overflow-hidden">
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-gray-50/80">
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-5 py-3.5 border-b-2 border-r border-gray-300/60">Critères de recherche</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-5 py-3.5 border-b-2 border-r border-gray-300/60">Caractéristiques</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-5 py-3.5 border-b-2 border-r border-gray-300/60">Contenu SEO</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-5 py-3.5 border-b-2 border-r border-gray-300/60">WL Url</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-5 py-3.5 border-b-2 border-r border-gray-300/60">Legacy Url</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-5 py-3.5 border-b-2 border-r border-gray-300/60">Opened Levels</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-5 py-3.5 border-b-2 border-gray-300/60">Indexation</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredContexts.map((ctx, idx) => {
+                    const wl = buildWLUrl(ctx);
+                    const legacy = buildLegacyUrl(ctx);
+                    const chars = getCharacteristics(ctx);
+                    const isEven = idx % 2 === 0;
 
-                  return (
-                    <tr key={ctx.id} className="hover:bg-gray-50 transition-colors align-top">
-                      {/* Critères de recherche */}
-                      <td className="py-3 pr-4 min-w-[180px]">
-                        <p className="font-semibold text-gray-900">{ctx.alias}</p>
-                        <p className="text-gray-600 text-xs mt-1">{ctx.distributionType}</p>
-                        <p className="text-gray-500 text-xs">
-                          {ctx.estateType}{ctx.estateSubType ? ` · ${ctx.estateSubType}` : ''}
-                        </p>
-                      </td>
-
-                      {/* Contenu SEO */}
-                      <td className="py-3 pr-4 min-w-[280px]">
-                        <p className="text-gray-900 text-xs">
-                          <span className="font-medium text-gray-500">Title:</span> {ctx.titleWithCountPlural}
-                        </p>
-                        <p className="text-gray-900 text-xs mt-1">
-                          <span className="font-medium text-gray-500">H1:</span> {ctx.headerPlural}
-                        </p>
-                        <p className="text-gray-500 text-xs mt-1 line-clamp-2">
-                          <span className="font-medium">Meta:</span> {ctx.metaDescPlural}
-                        </p>
-                      </td>
-
-                      {/* WL Url */}
-                      <td className="py-3 pr-4 min-w-[200px]">
-                        <code className="text-xs text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded block break-all">{wl.template}</code>
-                        <code className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded block break-all mt-1">{wl.example}</code>
-                      </td>
-
-                      {/* Legacy Url */}
-                      <td className="py-3 pr-4 min-w-[220px]">
-                        <code className="text-xs text-gray-700 bg-gray-100 px-1.5 py-0.5 rounded block break-all">{legacy.template}</code>
-                        <code className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded block break-all mt-1">{legacy.example}</code>
-                      </td>
-
-                      {/* Opened Levels */}
-                      <td className="py-3 pr-4 min-w-[120px]">
-                        <div className="flex flex-wrap gap-1">
-                          {ctx.openedLevels.map((level, i) => (
-                            <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">
-                              {level}
+                    return (
+                      <tr key={ctx.id} className={`group transition-colors duration-150 hover:bg-blue-50/40 h-24 ${isEven ? 'bg-white' : 'bg-gray-50/30'}`}>
+                        {/* Critères de recherche */}
+                        <td className="px-5 py-3 min-w-[200px] border-b border-r border-gray-200 align-middle">
+                          <p className="font-semibold text-gray-900 text-[13px] leading-tight">{ctx.alias}</p>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${
+                              ctx.distributionType === 'Buy' ? 'bg-emerald-100 text-emerald-700' :
+                              ctx.distributionType === 'Rent' ? 'bg-sky-100 text-sky-700' :
+                              'bg-violet-100 text-violet-700'
+                            }`}>
+                              {ctx.distributionType}
                             </span>
-                          ))}
-                        </div>
-                      </td>
+                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-orange-100 text-orange-700">
+                              {ctx.estateType.replace(/_/g, ' ')}
+                            </span>
+                            {ctx.estateSubType && (
+                              <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-rose-100 text-rose-700">
+                                {ctx.estateSubType.replace(/_/g, ' ')}
+                              </span>
+                            )}
+                          </div>
+                        </td>
 
-                      {/* Indexation */}
-                      <td className="py-3 pr-4">
-                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${
-                          ctx.indexation === 'auto' ? 'bg-green-100 text-green-800' :
-                          ctx.indexation === 'forced' ? 'bg-blue-100 text-blue-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>
-                          {ctx.indexation}
-                        </span>
-                      </td>
+                        {/* Caractéristiques */}
+                        <td className="px-5 py-3 border-b border-r border-gray-200 align-middle">
+                          {chars.length > 0 ? (
+                            <div className="flex flex-wrap gap-1.5">
+                              {chars.map((c, i) => (
+                                <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-600 ring-1 ring-slate-200/60">
+                                  <span className="text-slate-400 mr-1">{c.key}:</span>{c.value}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span className="text-xs text-gray-300">—</span>
+                          )}
+                        </td>
 
-                      {/* Caractéristiques */}
-                      <td className="py-3">
-                        {chars.length > 0 ? (
+                        {/* Contenu SEO */}
+                        <td className="px-5 py-3 min-w-[300px] border-b border-r border-gray-200 align-middle">
+                          <div className="space-y-1.5">
+                            <p className="text-xs leading-relaxed">
+                              <span className="inline-block w-11 text-[10px] font-bold uppercase text-gray-400 tracking-wide">Title</span>
+                              <span className="text-gray-800">{ctx.titleWithCountPlural}</span>
+                            </p>
+                            <p className="text-xs leading-relaxed">
+                              <span className="inline-block w-11 text-[10px] font-bold uppercase text-gray-400 tracking-wide">H1</span>
+                              <span className="text-gray-800">{ctx.headerPlural}</span>
+                            </p>
+                            <p className="text-xs leading-relaxed line-clamp-2">
+                              <span className="inline-block w-11 text-[10px] font-bold uppercase text-gray-400 tracking-wide">Meta</span>
+                              <span className="text-gray-500">{ctx.metaDescPlural}</span>
+                            </p>
+                          </div>
+                        </td>
+
+                        {/* WL Url */}
+                        <td className="px-5 py-3 min-w-[220px] border-b border-r border-gray-200 align-middle">
+                          <div className="space-y-1.5">
+                            <code className="text-[11px] text-gray-600 bg-gray-100 px-2 py-1 rounded-md block break-all font-mono leading-snug">{wl.template}</code>
+                            <code className="text-[11px] text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md block break-all font-mono leading-snug">{wl.example}</code>
+                          </div>
+                        </td>
+
+                        {/* Legacy Url */}
+                        <td className="px-5 py-3 min-w-[240px] border-b border-r border-gray-200 align-middle">
+                          <div className="space-y-1.5">
+                            <code className="text-[11px] text-gray-600 bg-gray-100 px-2 py-1 rounded-md block break-all font-mono leading-snug">{legacy.template}</code>
+                            <code className="text-[11px] text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md block break-all font-mono leading-snug">{legacy.example}</code>
+                          </div>
+                        </td>
+
+                        {/* Opened Levels */}
+                        <td className="px-5 py-3 min-w-[160px] border-b border-r border-gray-200 align-middle">
                           <div className="flex flex-wrap gap-1">
-                            {chars.map((c, i) => (
-                              <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                                {c.key}: {c.value}
+                            {ctx.openedLevels.map((level, i) => (
+                              <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-violet-50 text-violet-700 ring-1 ring-violet-200/60">
+                                {levelNames[level] ?? level}
                               </span>
                             ))}
                           </div>
-                        ) : (
-                          <span className="text-xs text-gray-400">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        </td>
+
+                        {/* Indexation */}
+                        <td className="px-5 py-3 border-b border-gray-200 align-middle">
+                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold ${
+                            ctx.indexation === 'auto'
+                              ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60'
+                              : ctx.indexation === 'forced'
+                              ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200/60'
+                              : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200/60'
+                          }`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${
+                              ctx.indexation === 'auto' ? 'bg-emerald-500' :
+                              ctx.indexation === 'forced' ? 'bg-blue-500' :
+                              'bg-amber-500'
+                            }`}></span>
+                            {ctx.indexation}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
