@@ -37,6 +37,45 @@ export function parseCSV<T>(raw: string): T[] {
   });
 }
 
+function parseSemicolonCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = '';
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ';' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+export function parseSemicolonCSV<T>(raw: string): T[] {
+  const lines = raw.split('\n').filter(l => l.trim());
+  if (lines.length === 0) return [];
+  const headers = parseSemicolonCSVLine(lines[0]);
+  return lines.slice(1).map(line => {
+    const values = parseSemicolonCSVLine(line);
+    const obj: Record<string, string> = {};
+    headers.forEach((h, i) => {
+      obj[h] = values[i] ?? '';
+    });
+    return obj as T;
+  });
+}
+
 export interface SerpContextRow {
   ID: string;
   Alias: string;
@@ -48,6 +87,94 @@ export interface SerpContextRow {
   Price: string;
   Feature: string;
   OpenedLevels: string;
+}
+
+export interface SerpSearchQueryRow {
+  ID: string;
+  DistributionTypes: string;
+  EstateTypes: string;
+  EstateSubTypes: string;
+  ClassifiedBusiness: string;
+  NumberOfRoomsMin: string;
+  NumberOfRoomsMax: string;
+  NumberOfBedroomsMin: string;
+  NumberOfBedroomsMax: string;
+  PriceMin: string;
+  PriceMax: string;
+  YearOfConstructionMin: string;
+  YearOfConstructionMax: string;
+  CertificateOfEligibilityNeeded: string;
+  IsSaleGoodwill: string;
+  FeaturesIncluded: string;
+  BuildStates: string;
+  LocationsInBuildingIncluded: string;
+  LocationsInBuildingExcluded: string;
+  Furnished: string;
+  ProjectTypes: string;
+  HiddenProjectTypes: string;
+  EnergyCertificateClass: string;
+  PagingOrder: string;
+}
+
+export interface SearchQuery {
+  id: string;
+  distributionTypes: string;
+  estateTypes: string;
+  estateSubTypes: string;
+  classifiedBusiness: string;
+  numberOfRoomsMin: string;
+  numberOfRoomsMax: string;
+  numberOfBedroomsMin: string;
+  numberOfBedroomsMax: string;
+  priceMin: string;
+  priceMax: string;
+  yearOfConstructionMin: string;
+  yearOfConstructionMax: string;
+  certificateOfEligibilityNeeded: string;
+  isSaleGoodwill: string;
+  featuresIncluded: string;
+  buildStates: string;
+  locationsInBuildingIncluded: string;
+  locationsInBuildingExcluded: string;
+  furnished: string;
+  projectTypes: string;
+  hiddenProjectTypes: string;
+  energyCertificateClass: string;
+  pagingOrder: string;
+}
+
+export function parseSearchQueries(raw: string): Map<string, SearchQuery> {
+  const rows = parseSemicolonCSV<SerpSearchQueryRow>(raw);
+  const map = new Map<string, SearchQuery>();
+  for (const row of rows) {
+    map.set(row.ID, {
+      id: row.ID,
+      distributionTypes: row.DistributionTypes,
+      estateTypes: row.EstateTypes,
+      estateSubTypes: row.EstateSubTypes,
+      classifiedBusiness: row.ClassifiedBusiness,
+      numberOfRoomsMin: row.NumberOfRoomsMin,
+      numberOfRoomsMax: row.NumberOfRoomsMax,
+      numberOfBedroomsMin: row.NumberOfBedroomsMin,
+      numberOfBedroomsMax: row.NumberOfBedroomsMax,
+      priceMin: row.PriceMin,
+      priceMax: row.PriceMax,
+      yearOfConstructionMin: row.YearOfConstructionMin,
+      yearOfConstructionMax: row.YearOfConstructionMax,
+      certificateOfEligibilityNeeded: row.CertificateOfEligibilityNeeded,
+      isSaleGoodwill: row.IsSaleGoodwill,
+      featuresIncluded: row.FeaturesIncluded,
+      buildStates: row.BuildStates,
+      locationsInBuildingIncluded: row.LocationsInBuildingIncluded,
+      locationsInBuildingExcluded: row.LocationsInBuildingExcluded,
+      furnished: row.Furnished,
+      projectTypes: row.ProjectTypes,
+      hiddenProjectTypes: row.HiddenProjectTypes,
+      energyCertificateClass: row.EnergyCertificateClass,
+      pagingOrder: row.PagingOrder,
+    });
+  }
+  return map;
 }
 
 export interface SerpTextConfigRow {

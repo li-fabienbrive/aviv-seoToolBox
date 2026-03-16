@@ -1,11 +1,12 @@
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Brand } from '../data/brands';
-import { MergedContext } from '../data/csvParser';
+import { MergedContext, SearchQuery } from '../data/csvParser';
 
 interface ContextDetailPageProps {
   brand: Brand;
   context: MergedContext;
+  searchQuery?: SearchQuery;
   onBack: () => void;
 }
 
@@ -31,7 +32,7 @@ function buildLegacyUrl(ctx: MergedContext): { template: string; example: string
   };
 }
 
-export const ContextDetailPage: React.FC<ContextDetailPageProps> = ({ brand: _brand, context: ctx, onBack }) => {
+export const ContextDetailPage: React.FC<ContextDetailPageProps> = ({ brand: _brand, context: ctx, searchQuery: sq, onBack }) => {
   const wl = buildWLUrl(ctx);
   const legacy = buildLegacyUrl(ctx);
 
@@ -49,11 +50,31 @@ export const ContextDetailPage: React.FC<ContextDetailPageProps> = ({ brand: _br
     { label: 'Top Linkbox Link Text', value: ctx.topLinkboxLinkText },
   ];
 
-  const characteristics: { key: string; value: string }[] = [];
-  if (ctx.numberOfRooms) characteristics.push({ key: 'Rooms', value: ctx.numberOfRooms });
-  if (ctx.numberOfBedrooms) characteristics.push({ key: 'Bedrooms', value: ctx.numberOfBedrooms });
-  if (ctx.price) characteristics.push({ key: 'Price', value: ctx.price });
-  if (ctx.feature) characteristics.push({ key: 'Feature', value: ctx.feature });
+  const searchQueryFields: { label: string; value: string }[] = sq ? [
+    { label: 'DistributionTypes', value: sq.distributionTypes },
+    { label: 'EstateTypes', value: sq.estateTypes },
+    { label: 'EstateSubTypes', value: sq.estateSubTypes },
+    { label: 'ClassifiedBusiness', value: sq.classifiedBusiness },
+    { label: 'NumberOfRoomsMin', value: sq.numberOfRoomsMin },
+    { label: 'NumberOfRoomsMax', value: sq.numberOfRoomsMax },
+    { label: 'NumberOfBedroomsMin', value: sq.numberOfBedroomsMin },
+    { label: 'NumberOfBedroomsMax', value: sq.numberOfBedroomsMax },
+    { label: 'PriceMin', value: sq.priceMin },
+    { label: 'PriceMax', value: sq.priceMax },
+    { label: 'YearOfConstructionMin', value: sq.yearOfConstructionMin },
+    { label: 'YearOfConstructionMax', value: sq.yearOfConstructionMax },
+    { label: 'CertificateOfEligibilityNeeded', value: sq.certificateOfEligibilityNeeded },
+    { label: 'IsSaleGoodwill', value: sq.isSaleGoodwill },
+    { label: 'FeaturesIncluded', value: sq.featuresIncluded },
+    { label: 'BuildStates', value: sq.buildStates },
+    { label: 'LocationsInBuildingIncluded', value: sq.locationsInBuildingIncluded },
+    { label: 'LocationsInBuildingExcluded', value: sq.locationsInBuildingExcluded },
+    { label: 'Furnished', value: sq.furnished },
+    { label: 'ProjectTypes', value: sq.projectTypes },
+    { label: 'HiddenProjectTypes', value: sq.hiddenProjectTypes },
+    { label: 'EnergyCertificateClass', value: sq.energyCertificateClass },
+    { label: 'PagingOrder', value: sq.pagingOrder },
+  ].filter(f => f.value) : [];
 
   return (
     <div className="min-h-full bg-gradient-to-br from-gray-50 to-gray-100/50">
@@ -79,55 +100,36 @@ export const ContextDetailPage: React.FC<ContextDetailPageProps> = ({ brand: _br
             <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Critères de recherche & Caractéristiques</h2>
           </div>
           <div className="px-6 py-5">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {/* Distribution Type */}
-              <div>
-                <p className="text-[10px] font-bold uppercase text-gray-400 tracking-wide mb-1.5">Distribution</p>
-                <span className={`inline-block px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wide ${
-                  ctx.distributionType === 'Buy' ? 'bg-emerald-100 text-emerald-700' :
-                  ctx.distributionType === 'Rent' ? 'bg-sky-100 text-sky-700' :
-                  'bg-violet-100 text-violet-700'
-                }`}>
-                  {ctx.distributionType}
-                </span>
-              </div>
-              {/* Estate Type */}
-              <div>
-                <p className="text-[10px] font-bold uppercase text-gray-400 tracking-wide mb-1.5">Estate Type</p>
-                <span className="inline-block px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wide bg-orange-100 text-orange-700">
-                  {ctx.estateType.replace(/_/g, ' ')}
-                </span>
-              </div>
-              {/* Estate SubType */}
-              <div>
-                <p className="text-[10px] font-bold uppercase text-gray-400 tracking-wide mb-1.5">Estate SubType</p>
-                {ctx.estateSubType ? (
-                  <span className="inline-block px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wide bg-rose-100 text-rose-700">
-                    {ctx.estateSubType.replace(/_/g, ' ')}
-                  </span>
-                ) : (
-                  <span className="text-xs text-gray-300">—</span>
-                )}
-              </div>
-              {/* Alias */}
-              <div>
-                <p className="text-[10px] font-bold uppercase text-gray-400 tracking-wide mb-1.5">Alias</p>
-                <p className="text-sm font-semibold text-gray-800">{ctx.alias}</p>
-              </div>
+            {/* Alias */}
+            <div className="mb-5">
+              <p className="text-[10px] font-bold uppercase text-gray-400 tracking-wide mb-1.5">Alias</p>
+              <p className="text-sm font-semibold text-gray-800">{ctx.alias}</p>
             </div>
 
-            {/* Characteristics */}
-            {characteristics.length > 0 && (
-              <div className="mt-6 pt-5 border-t border-gray-100">
-                <p className="text-[10px] font-bold uppercase text-gray-400 tracking-wide mb-2">Caractéristiques</p>
-                <div className="flex flex-wrap gap-2">
-                  {characteristics.map((c, i) => (
-                    <span key={i} className="inline-flex items-center px-3 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 ring-1 ring-slate-200/60">
-                      <span className="text-slate-400 mr-1.5">{c.key}:</span>{c.value}
-                    </span>
-                  ))}
-                </div>
+            {/* SearchQuery fields */}
+            {searchQueryFields.length > 0 ? (
+              <div className="space-y-3">
+                {searchQueryFields.map((field, i) => (
+                  <div key={i} className="flex items-start gap-4">
+                    <span className="shrink-0 w-52 text-[11px] font-bold uppercase text-gray-400 tracking-wide pt-0.5">{field.label}</span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {field.value.includes(',') ? (
+                        field.value.split(',').map((v, j) => (
+                          <span key={j} className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 ring-1 ring-slate-200/60">
+                            {v.trim().replace(/_/g, ' ')}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-700 ring-1 ring-slate-200/60">
+                          {field.value.replace(/_/g, ' ')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
+            ) : (
+              <p className="text-sm text-gray-400">Aucune SearchQuery associée</p>
             )}
           </div>
         </div>

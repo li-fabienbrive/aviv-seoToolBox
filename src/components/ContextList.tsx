@@ -1,12 +1,13 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Brand } from '../data/brands';
-import { MergedContext, levelNames } from '../data/csvParser';
+import { MergedContext, SearchQuery, levelNames } from '../data/csvParser';
 import { useTranslation } from '../i18n/translations';
 
 interface ContextListProps {
   brand: Brand;
   contexts: MergedContext[];
+  searchQueries: Map<string, SearchQuery>;
   onSelectContext: (ctx: MergedContext) => void;
 }
 
@@ -32,16 +33,34 @@ function buildLegacyUrl(ctx: MergedContext): { template: string; example: string
 
 const levelNamesLocal = levelNames;
 
-function getCharacteristics(ctx: MergedContext): { key: string; value: string }[] {
+function getCharacteristics(sq: SearchQuery | undefined): { key: string; value: string }[] {
+  if (!sq) return [];
   const chars: { key: string; value: string }[] = [];
-  if (ctx.numberOfRooms) chars.push({ key: 'rooms', value: ctx.numberOfRooms });
-  if (ctx.numberOfBedrooms) chars.push({ key: 'bedrooms', value: ctx.numberOfBedrooms });
-  if (ctx.price) chars.push({ key: 'price', value: ctx.price });
-  if (ctx.feature) chars.push({ key: 'feature', value: ctx.feature });
+  // Exclude: distributionTypes, estateTypes, estateSubTypes (shown in critères column)
+  if (sq.classifiedBusiness) chars.push({ key: 'ClassifiedBusiness', value: sq.classifiedBusiness });
+  if (sq.numberOfRoomsMin) chars.push({ key: 'RoomsMin', value: sq.numberOfRoomsMin });
+  if (sq.numberOfRoomsMax) chars.push({ key: 'RoomsMax', value: sq.numberOfRoomsMax });
+  if (sq.numberOfBedroomsMin) chars.push({ key: 'BedroomsMin', value: sq.numberOfBedroomsMin });
+  if (sq.numberOfBedroomsMax) chars.push({ key: 'BedroomsMax', value: sq.numberOfBedroomsMax });
+  if (sq.priceMin) chars.push({ key: 'PriceMin', value: sq.priceMin });
+  if (sq.priceMax) chars.push({ key: 'PriceMax', value: sq.priceMax });
+  if (sq.yearOfConstructionMin) chars.push({ key: 'YearConstructionMin', value: sq.yearOfConstructionMin });
+  if (sq.yearOfConstructionMax) chars.push({ key: 'YearConstructionMax', value: sq.yearOfConstructionMax });
+  if (sq.certificateOfEligibilityNeeded) chars.push({ key: 'CertificateOfEligibility', value: sq.certificateOfEligibilityNeeded });
+  if (sq.isSaleGoodwill) chars.push({ key: 'IsSaleGoodwill', value: sq.isSaleGoodwill });
+  if (sq.featuresIncluded) chars.push({ key: 'Features', value: sq.featuresIncluded });
+  if (sq.buildStates) chars.push({ key: 'BuildStates', value: sq.buildStates });
+  if (sq.locationsInBuildingIncluded) chars.push({ key: 'LocationsIncluded', value: sq.locationsInBuildingIncluded });
+  if (sq.locationsInBuildingExcluded) chars.push({ key: 'LocationsExcluded', value: sq.locationsInBuildingExcluded });
+  if (sq.furnished) chars.push({ key: 'Furnished', value: sq.furnished });
+  if (sq.projectTypes) chars.push({ key: 'ProjectTypes', value: sq.projectTypes });
+  if (sq.hiddenProjectTypes) chars.push({ key: 'HiddenProjectTypes', value: sq.hiddenProjectTypes });
+  if (sq.energyCertificateClass) chars.push({ key: 'EnergyCertificate', value: sq.energyCertificateClass });
+  if (sq.pagingOrder) chars.push({ key: 'PagingOrder', value: sq.pagingOrder });
   return chars;
 }
 
-export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, onSelectContext }) => {
+export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searchQueries, onSelectContext }) => {
   const t = useTranslation(brand.locale);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [query, setQuery] = useState('');
@@ -49,20 +68,28 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, onSel
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Build all available tags from contexts
+  // Build all available tags from search queries
   const allTags = useMemo(() => {
     const tags = new Set<string>();
     contexts.forEach(ctx => {
-      if (ctx.distributionType) tags.add(ctx.distributionType);
-      if (ctx.estateType) tags.add(ctx.estateType.replace(/_/g, ' '));
-      if (ctx.estateSubType) tags.add(ctx.estateSubType.replace(/_/g, ' '));
-      if (ctx.feature) tags.add(`feature:${ctx.feature}`);
-      if (ctx.numberOfRooms) tags.add(`rooms:${ctx.numberOfRooms}`);
-      if (ctx.numberOfBedrooms) tags.add(`bedrooms:${ctx.numberOfBedrooms}`);
-      if (ctx.price) tags.add(`price:${ctx.price}`);
+      const sq = searchQueries.get(ctx.id);
+      if (sq) {
+        if (sq.distributionTypes) sq.distributionTypes.split(',').forEach(v => tags.add(v.trim()));
+        if (sq.estateTypes) tags.add(sq.estateTypes.replace(/_/g, ' '));
+        if (sq.estateSubTypes) sq.estateSubTypes.split(',').forEach(v => tags.add(v.trim().replace(/_/g, ' ')));
+        if (sq.classifiedBusiness) tags.add(`business:${sq.classifiedBusiness}`);
+        if (sq.featuresIncluded) sq.featuresIncluded.split(',').forEach(v => tags.add(`feature:${v.trim()}`));
+        if (sq.numberOfRoomsMin) tags.add(`roomsMin:${sq.numberOfRoomsMin}`);
+        if (sq.numberOfRoomsMax) tags.add(`roomsMax:${sq.numberOfRoomsMax}`);
+        if (sq.numberOfBedroomsMin) tags.add(`bedroomsMin:${sq.numberOfBedroomsMin}`);
+        if (sq.numberOfBedroomsMax) tags.add(`bedroomsMax:${sq.numberOfBedroomsMax}`);
+        if (sq.priceMin) tags.add(`priceMin:${sq.priceMin}`);
+        if (sq.priceMax) tags.add(`priceMax:${sq.priceMax}`);
+        if (sq.projectTypes) sq.projectTypes.split(',').forEach(v => tags.add(`project:${v.trim()}`));
+      }
     });
     return Array.from(tags).sort();
-  }, [contexts]);
+  }, [contexts, searchQueries]);
 
   // Filter suggestions based on query, exclude already selected
   const suggestions = useMemo(() => {
@@ -77,18 +104,33 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, onSel
   const filteredContexts = useMemo(() => {
     if (selectedTags.length === 0) return contexts;
     return contexts.filter(ctx => {
+      const sq = searchQueries.get(ctx.id);
+      if (!sq) return false;
       return selectedTags.every(tag => {
-        if (ctx.distributionType === tag) return true;
-        if (ctx.estateType.replace(/_/g, ' ') === tag) return true;
-        if (ctx.estateSubType && ctx.estateSubType.replace(/_/g, ' ') === tag) return true;
-        if (tag.startsWith('feature:') && ctx.feature === tag.split(':')[1]) return true;
-        if (tag.startsWith('rooms:') && ctx.numberOfRooms === tag.split(':')[1]) return true;
-        if (tag.startsWith('bedrooms:') && ctx.numberOfBedrooms === tag.split(':')[1]) return true;
-        if (tag.startsWith('price:') && ctx.price === tag.split(':')[1]) return true;
+        const distTypes = sq.distributionTypes ? sq.distributionTypes.split(',').map(v => v.trim()) : [];
+        if (distTypes.includes(tag)) return true;
+        if (sq.estateTypes && sq.estateTypes.replace(/_/g, ' ') === tag) return true;
+        const subTypes = sq.estateSubTypes ? sq.estateSubTypes.split(',').map(v => v.trim().replace(/_/g, ' ')) : [];
+        if (subTypes.includes(tag)) return true;
+        if (tag.startsWith('business:') && sq.classifiedBusiness === tag.split(':')[1]) return true;
+        if (tag.startsWith('feature:')) {
+          const feats = sq.featuresIncluded ? sq.featuresIncluded.split(',').map(v => v.trim()) : [];
+          if (feats.includes(tag.split(':')[1])) return true;
+        }
+        if (tag.startsWith('roomsMin:') && sq.numberOfRoomsMin === tag.split(':')[1]) return true;
+        if (tag.startsWith('roomsMax:') && sq.numberOfRoomsMax === tag.split(':')[1]) return true;
+        if (tag.startsWith('bedroomsMin:') && sq.numberOfBedroomsMin === tag.split(':')[1]) return true;
+        if (tag.startsWith('bedroomsMax:') && sq.numberOfBedroomsMax === tag.split(':')[1]) return true;
+        if (tag.startsWith('priceMin:') && sq.priceMin === tag.split(':')[1]) return true;
+        if (tag.startsWith('priceMax:') && sq.priceMax === tag.split(':')[1]) return true;
+        if (tag.startsWith('project:')) {
+          const projs = sq.projectTypes ? sq.projectTypes.split(',').map(v => v.trim()) : [];
+          if (projs.includes(tag.split(':')[1])) return true;
+        }
         return false;
       });
     });
-  }, [contexts, selectedTags]);
+  }, [contexts, selectedTags, searchQueries]);
 
   const addTag = (tag: string) => {
     setSelectedTags(prev => [...prev, tag]);
@@ -206,10 +248,16 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, onSel
                 </thead>
                 <tbody>
                   {filteredContexts.map((ctx, idx) => {
+                    const sq = searchQueries.get(ctx.id);
                     const wl = buildWLUrl(ctx);
                     const legacy = buildLegacyUrl(ctx);
-                    const chars = getCharacteristics(ctx);
+                    const chars = getCharacteristics(sq);
                     const isEven = idx % 2 === 0;
+
+                    // Get distribution types from SearchQuery
+                    const distTypes = sq?.distributionTypes ? sq.distributionTypes.split(',').map(v => v.trim()) : [];
+                    const sqEstateTypes = sq?.estateTypes || '';
+                    const sqEstateSubTypes = sq?.estateSubTypes ? sq.estateSubTypes.split(',').map(v => v.trim()) : [];
 
                     return (
                       <tr key={ctx.id} onClick={() => onSelectContext(ctx)} className={`group transition-colors duration-150 cursor-pointer hover:bg-indigo-50/50 h-24 ${isEven ? 'bg-white' : 'bg-gray-50/30'}`}>
@@ -217,21 +265,25 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, onSel
                         <td className="px-5 py-3 min-w-[200px] border-b border-r border-gray-200 align-middle">
                           <p className="font-semibold text-gray-900 text-[13px] leading-tight">{ctx.alias}</p>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                            <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${
-                              ctx.distributionType === 'Buy' ? 'bg-emerald-100 text-emerald-700' :
-                              ctx.distributionType === 'Rent' ? 'bg-sky-100 text-sky-700' :
-                              'bg-violet-100 text-violet-700'
-                            }`}>
-                              {ctx.distributionType}
-                            </span>
-                            <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-orange-100 text-orange-700">
-                              {ctx.estateType.replace(/_/g, ' ')}
-                            </span>
-                            {ctx.estateSubType && (
-                              <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-rose-100 text-rose-700">
-                                {ctx.estateSubType.replace(/_/g, ' ')}
+                            {distTypes.map((dt, i) => (
+                              <span key={`dist-${i}`} className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${
+                                dt === 'Buy' || dt.startsWith('Buy') ? 'bg-emerald-100 text-emerald-700' :
+                                dt === 'Rent' ? 'bg-sky-100 text-sky-700' :
+                                'bg-violet-100 text-violet-700'
+                              }`}>
+                                {dt.replace(/_/g, ' ')}
+                              </span>
+                            ))}
+                            {sqEstateTypes && (
+                              <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-orange-100 text-orange-700">
+                                {sqEstateTypes.replace(/_/g, ' ')}
                               </span>
                             )}
+                            {sqEstateSubTypes.map((st, i) => (
+                              <span key={`sub-${i}`} className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-rose-100 text-rose-700">
+                                {st.replace(/_/g, ' ')}
+                              </span>
+                            ))}
                           </div>
                         </td>
 
