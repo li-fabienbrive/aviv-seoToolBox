@@ -75,7 +75,7 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
       const sq = searchQueries.get(ctx.id);
       if (sq) {
         if (sq.distributionTypes) sq.distributionTypes.split(',').forEach(v => tags.add(v.trim()));
-        if (sq.estateTypes) tags.add(sq.estateTypes.replace(/_/g, ' '));
+        if (sq.estateTypes) sq.estateTypes.split(',').forEach(v => tags.add(v.trim().replace(/_/g, ' ')));
         if (sq.estateSubTypes) sq.estateSubTypes.split(',').forEach(v => tags.add(v.trim().replace(/_/g, ' ')));
         if (sq.classifiedBusiness) tags.add(`business:${sq.classifiedBusiness}`);
         if (sq.featuresIncluded) sq.featuresIncluded.split(',').forEach(v => tags.add(`feature:${v.trim()}`));
@@ -86,6 +86,17 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
         if (sq.priceMin) tags.add(`priceMin:${sq.priceMin}`);
         if (sq.priceMax) tags.add(`priceMax:${sq.priceMax}`);
         if (sq.projectTypes) sq.projectTypes.split(',').forEach(v => tags.add(`project:${v.trim()}`));
+        if (sq.hiddenProjectTypes) sq.hiddenProjectTypes.split(',').forEach(v => tags.add(`hiddenProject:${v.trim()}`));
+        if (sq.yearOfConstructionMin) tags.add(`yearConstructionMin:${sq.yearOfConstructionMin}`);
+        if (sq.yearOfConstructionMax) tags.add(`yearConstructionMax:${sq.yearOfConstructionMax}`);
+        if (sq.certificateOfEligibilityNeeded) tags.add(`certificate:${sq.certificateOfEligibilityNeeded}`);
+        if (sq.isSaleGoodwill) tags.add(`saleGoodwill:${sq.isSaleGoodwill}`);
+        if (sq.buildStates) sq.buildStates.split(',').forEach(v => tags.add(`buildState:${v.trim()}`));
+        if (sq.locationsInBuildingIncluded) sq.locationsInBuildingIncluded.split(',').forEach(v => tags.add(`locationIncl:${v.trim()}`));
+        if (sq.locationsInBuildingExcluded) sq.locationsInBuildingExcluded.split(',').forEach(v => tags.add(`locationExcl:${v.trim()}`));
+        if (sq.furnished) tags.add(`furnished:${sq.furnished}`);
+        if (sq.energyCertificateClass) tags.add(`energy:${sq.energyCertificateClass}`);
+        if (sq.pagingOrder) tags.add(`pagingOrder:${sq.pagingOrder}`);
       }
     });
     return Array.from(tags).sort();
@@ -109,7 +120,8 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
       return selectedTags.every(tag => {
         const distTypes = sq.distributionTypes ? sq.distributionTypes.split(',').map(v => v.trim()) : [];
         if (distTypes.includes(tag)) return true;
-        if (sq.estateTypes && sq.estateTypes.replace(/_/g, ' ') === tag) return true;
+        const estTypes = sq.estateTypes ? sq.estateTypes.split(',').map(v => v.trim().replace(/_/g, ' ')) : [];
+        if (estTypes.includes(tag)) return true;
         const subTypes = sq.estateSubTypes ? sq.estateSubTypes.split(',').map(v => v.trim().replace(/_/g, ' ')) : [];
         if (subTypes.includes(tag)) return true;
         if (tag.startsWith('business:') && sq.classifiedBusiness === tag.split(':')[1]) return true;
@@ -127,6 +139,29 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
           const projs = sq.projectTypes ? sq.projectTypes.split(',').map(v => v.trim()) : [];
           if (projs.includes(tag.split(':')[1])) return true;
         }
+        if (tag.startsWith('hiddenProject:')) {
+          const hProjs = sq.hiddenProjectTypes ? sq.hiddenProjectTypes.split(',').map(v => v.trim()) : [];
+          if (hProjs.includes(tag.split(':')[1])) return true;
+        }
+        if (tag.startsWith('yearConstructionMin:') && sq.yearOfConstructionMin === tag.split(':')[1]) return true;
+        if (tag.startsWith('yearConstructionMax:') && sq.yearOfConstructionMax === tag.split(':')[1]) return true;
+        if (tag.startsWith('certificate:') && sq.certificateOfEligibilityNeeded === tag.split(':')[1]) return true;
+        if (tag.startsWith('saleGoodwill:') && sq.isSaleGoodwill === tag.split(':')[1]) return true;
+        if (tag.startsWith('buildState:')) {
+          const states = sq.buildStates ? sq.buildStates.split(',').map(v => v.trim()) : [];
+          if (states.includes(tag.split(':')[1])) return true;
+        }
+        if (tag.startsWith('locationIncl:')) {
+          const locs = sq.locationsInBuildingIncluded ? sq.locationsInBuildingIncluded.split(',').map(v => v.trim()) : [];
+          if (locs.includes(tag.split(':')[1])) return true;
+        }
+        if (tag.startsWith('locationExcl:')) {
+          const locs = sq.locationsInBuildingExcluded ? sq.locationsInBuildingExcluded.split(',').map(v => v.trim()) : [];
+          if (locs.includes(tag.split(':')[1])) return true;
+        }
+        if (tag.startsWith('furnished:') && sq.furnished === tag.split(':')[1]) return true;
+        if (tag.startsWith('energy:') && sq.energyCertificateClass === tag.split(':')[1]) return true;
+        if (tag.startsWith('pagingOrder:') && sq.pagingOrder === tag.split(':')[1]) return true;
         return false;
       });
     });
@@ -256,7 +291,7 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
 
                     // Get distribution types from SearchQuery
                     const distTypes = sq?.distributionTypes ? sq.distributionTypes.split(',').map(v => v.trim()) : [];
-                    const sqEstateTypes = sq?.estateTypes || '';
+                    const sqEstateTypes = sq?.estateTypes ? sq.estateTypes.split(',').map(v => v.trim()) : [];
                     const sqEstateSubTypes = sq?.estateSubTypes ? sq.estateSubTypes.split(',').map(v => v.trim()) : [];
 
                     return (
@@ -274,11 +309,11 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
                                 {dt.replace(/_/g, ' ')}
                               </span>
                             ))}
-                            {sqEstateTypes && (
-                              <span className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-orange-100 text-orange-700">
-                                {sqEstateTypes.replace(/_/g, ' ')}
+                            {sqEstateTypes.map((et, i) => (
+                              <span key={`estate-${i}`} className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-orange-100 text-orange-700">
+                                {et.replace(/_/g, ' ')}
                               </span>
-                            )}
+                            ))}
                             {sqEstateSubTypes.map((st, i) => (
                               <span key={`sub-${i}`} className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-rose-100 text-rose-700">
                                 {st.replace(/_/g, ' ')}
