@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Filter } from 'lucide-react';
 import { Brand } from '../data/brands';
 import { MergedContext, SearchQuery, levelNames } from '../data/csvParser';
 import { useTranslation } from '../i18n/translations';
@@ -58,6 +58,42 @@ function getCharacteristics(sq: SearchQuery | undefined): { key: string; value: 
   if (sq.energyCertificateClass) chars.push({ key: 'EnergyCertificate', value: sq.energyCertificateClass });
   if (sq.pagingOrder) chars.push({ key: 'PagingOrder', value: sq.pagingOrder });
   return chars;
+}
+
+const listTagPrefixes: Record<string, string> = {
+  Features: 'feature:',
+  BuildStates: 'buildState:',
+  LocationsIncluded: 'locationIncl:',
+  LocationsExcluded: 'locationExcl:',
+  ProjectTypes: 'project:',
+  HiddenProjectTypes: 'hiddenProject:',
+};
+
+const singleTagPrefixes: Record<string, string> = {
+  ClassifiedBusiness: 'business:',
+  RoomsMin: 'roomsMin:',
+  RoomsMax: 'roomsMax:',
+  BedroomsMin: 'bedroomsMin:',
+  BedroomsMax: 'bedroomsMax:',
+  PriceMin: 'priceMin:',
+  PriceMax: 'priceMax:',
+  YearConstructionMin: 'yearConstructionMin:',
+  YearConstructionMax: 'yearConstructionMax:',
+  CertificateOfEligibility: 'certificate:',
+  IsSaleGoodwill: 'saleGoodwill:',
+  Furnished: 'furnished:',
+  EnergyCertificate: 'energy:',
+  PagingOrder: 'pagingOrder:',
+};
+
+function getTagsForCharacteristic(key: string, value: string): string[] {
+  if (listTagPrefixes[key]) {
+    return value.split(',').map(v => `${listTagPrefixes[key]}${v.trim()}`);
+  }
+  if (singleTagPrefixes[key]) {
+    return [`${singleTagPrefixes[key]}${value}`];
+  }
+  return [];
 }
 
 export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searchQueries, onSelectContext }) => {
@@ -174,6 +210,13 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
     inputRef.current?.focus();
   };
 
+  const addTags = (tags: string[]) => {
+    setSelectedTags(prev => {
+      const newTags = tags.filter(t => !prev.includes(t));
+      return [...prev, ...newTags];
+    });
+  };
+
   const removeTag = (tag: string) => {
     setSelectedTags(prev => prev.filter(t => t !== tag));
   };
@@ -258,7 +301,7 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-x-auto overflow-y-auto">
+      <div className="flex-1 overflow-x-auto overflow-y-auto" style={{ overflow: 'clip visible' }}>
         {filteredContexts.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full p-12">
             <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
@@ -268,7 +311,7 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
           </div>
         ) : (
           <div className="px-6 py-4">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 overflow-hidden">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200/80">
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="bg-gray-50/80">
@@ -300,25 +343,52 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
                         <td className="px-5 py-3 min-w-[200px] border-b border-r border-gray-200 align-middle">
                           <p className="font-semibold text-gray-900 text-[13px] leading-tight">{ctx.alias}</p>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
-                            {distTypes.map((dt, i) => (
-                              <span key={`dist-${i}`} className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide ${
-                                dt === 'Buy' || dt.startsWith('Buy') ? 'bg-emerald-100 text-emerald-700' :
-                                dt === 'Rent' ? 'bg-sky-100 text-sky-700' :
-                                'bg-violet-100 text-violet-700'
-                              }`}>
-                                {dt.replace(/_/g, ' ')}
-                              </span>
-                            ))}
-                            {sqEstateTypes.map((et, i) => (
-                              <span key={`estate-${i}`} className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-orange-100 text-orange-700">
-                                {et.replace(/_/g, ' ')}
-                              </span>
-                            ))}
-                            {sqEstateSubTypes.map((st, i) => (
-                              <span key={`sub-${i}`} className="inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-rose-100 text-rose-700">
-                                {st.replace(/_/g, ' ')}
-                              </span>
-                            ))}
+                            {distTypes.map((dt, i) => {
+                              const tag = dt;
+                              const active = selectedTags.includes(tag);
+                              return (
+                                <span key={`dist-${i}`} className={`relative inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide cursor-pointer group/tip ${
+                                  dt === 'Buy' || dt.startsWith('Buy') ? 'bg-emerald-100 text-emerald-700' :
+                                  dt === 'Rent' ? 'bg-sky-100 text-sky-700' :
+                                  'bg-violet-100 text-violet-700'
+                                } ${active ? 'ring-2 ring-indigo-400' : 'hover:ring-2 hover:ring-indigo-300'}`}
+                                  onClick={(e) => { e.stopPropagation(); if (!active) addTags([tag]); }}
+                                >
+                                  {dt.replace(/_/g, ' ')}
+                                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide bg-gray-800 text-white rounded-md whitespace-nowrap opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none z-[9999] flex items-center gap-1">
+                                    {active ? '✓ Filtered' : <><Filter className="w-3 h-3" /> Add filter</>}
+                                  </span>
+                                </span>
+                              );
+                            })}
+                            {sqEstateTypes.map((et, i) => {
+                              const tag = et.replace(/_/g, ' ');
+                              const active = selectedTags.includes(tag);
+                              return (
+                                <span key={`estate-${i}`} className={`relative inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-orange-100 text-orange-700 cursor-pointer group/tip ${active ? 'ring-2 ring-indigo-400' : 'hover:ring-2 hover:ring-indigo-300'}`}
+                                  onClick={(e) => { e.stopPropagation(); if (!active) addTags([tag]); }}
+                                >
+                                  {et.replace(/_/g, ' ')}
+                                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide bg-gray-800 text-white rounded-md whitespace-nowrap opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none z-[9999] flex items-center gap-1">
+                                    {active ? '✓ Filtered' : <><Filter className="w-3 h-3" /> Add filter</>}
+                                  </span>
+                                </span>
+                              );
+                            })}
+                            {sqEstateSubTypes.map((st, i) => {
+                              const tag = st.replace(/_/g, ' ');
+                              const active = selectedTags.includes(tag);
+                              return (
+                                <span key={`sub-${i}`} className={`relative inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-rose-100 text-rose-700 cursor-pointer group/tip ${active ? 'ring-2 ring-indigo-400' : 'hover:ring-2 hover:ring-indigo-300'}`}
+                                  onClick={(e) => { e.stopPropagation(); if (!active) addTags([tag]); }}
+                                >
+                                  {st.replace(/_/g, ' ')}
+                                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide bg-gray-800 text-white rounded-md whitespace-nowrap opacity-0 group-hover/tip:opacity-100 transition-opacity pointer-events-none z-[9999] flex items-center gap-1">
+                                    {active ? '✓ Filtered' : <><Filter className="w-3 h-3" /> Add filter</>}
+                                  </span>
+                                </span>
+                              );
+                            })}
                           </div>
                         </td>
 
@@ -326,11 +396,21 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
                         <td className="px-5 py-3 border-b border-r border-gray-200 align-middle">
                           {chars.length > 0 ? (
                             <div className="flex flex-wrap gap-1.5">
-                              {chars.map((c, i) => (
-                                <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-600 ring-1 ring-slate-200/60">
-                                  <span className="text-slate-400 mr-1">{c.key}:</span>{c.value}
-                                </span>
-                              ))}
+                              {chars.map((c, i) => {
+                                const tags = getTagsForCharacteristic(c.key, c.value);
+                                const allActive = tags.length > 0 && tags.every(t => selectedTags.includes(t));
+                                return (
+                                  <span key={i}
+                                    className={`relative inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-600 ring-1 ring-slate-200/60 cursor-pointer group/kf ${allActive ? 'ring-2 ring-indigo-400' : 'hover:ring-2 hover:ring-indigo-300'}`}
+                                    onClick={(e) => { e.stopPropagation(); if (tags.length > 0 && !allActive) addTags(tags); }}
+                                  >
+                                    <span className="text-slate-400 mr-1">{c.key}:</span>{c.value}
+                                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide bg-gray-800 text-white rounded-md whitespace-nowrap opacity-0 group-hover/kf:opacity-100 transition-opacity pointer-events-none z-[9999] flex items-center gap-1">
+                                      {allActive ? '✓ Filtered' : <><Filter className="w-3 h-3" /> Add filter</>}
+                                    </span>
+                                  </span>
+                                );
+                              })}
                             </div>
                           ) : (
                             <span className="text-xs text-gray-300">—</span>
