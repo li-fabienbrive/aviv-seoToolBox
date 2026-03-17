@@ -9,6 +9,9 @@ interface ContextListProps {
   contexts: MergedContext[];
   searchQueries: Map<string, SearchQuery>;
   onSelectContext: (ctx: MergedContext) => void;
+  selectedTags: string[];
+  onSelectedTagsChange: (tags: string[]) => void;
+  savedScrollPosition: number;
 }
 
 function slugify(text: string): string {
@@ -96,13 +99,20 @@ function getTagsForCharacteristic(key: string, value: string): string[] {
   return [];
 }
 
-export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searchQueries, onSelectContext }) => {
+export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searchQueries, onSelectContext, selectedTags, onSelectedTagsChange, savedScrollPosition }) => {
   const t = useTranslation(brand.locale);
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [query, setQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Restore scroll position on mount
+  useEffect(() => {
+    if (scrollRef.current && savedScrollPosition > 0) {
+      scrollRef.current.scrollTop = savedScrollPosition;
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Build all available tags from search queries
   const allTags = useMemo(() => {
@@ -204,21 +214,19 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
   }, [contexts, selectedTags, searchQueries]);
 
   const addTag = (tag: string) => {
-    setSelectedTags(prev => [...prev, tag]);
+    onSelectedTagsChange([...selectedTags, tag]);
     setQuery('');
     setShowDropdown(false);
     inputRef.current?.focus();
   };
 
   const addTags = (tags: string[]) => {
-    setSelectedTags(prev => {
-      const newTags = tags.filter(t => !prev.includes(t));
-      return [...prev, ...newTags];
-    });
+    const newTags = tags.filter(t => !selectedTags.includes(t));
+    if (newTags.length > 0) onSelectedTagsChange([...selectedTags, ...newTags]);
   };
 
   const removeTag = (tag: string) => {
-    setSelectedTags(prev => prev.filter(t => t !== tag));
+    onSelectedTagsChange(selectedTags.filter(t => t !== tag));
   };
 
   // Close dropdown on outside click
@@ -261,7 +269,7 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
               </span>
             ))}
             <button
-              onClick={() => setSelectedTags([])}
+              onClick={() => onSelectedTagsChange([])}
               className="text-xs text-gray-400 hover:text-gray-600 transition-colors px-2 py-1"
             >
               Clear all
@@ -301,7 +309,7 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-x-auto overflow-y-auto" style={{ overflow: 'clip visible' }}>
+      <div ref={scrollRef} data-context-list-scroll className="flex-1 overflow-x-auto overflow-y-auto" style={{ overflow: 'clip visible' }}>
         {filteredContexts.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full p-12">
             <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">

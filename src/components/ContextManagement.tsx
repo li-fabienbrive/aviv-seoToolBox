@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { Brand } from '../data/brands';
 import { mergeContextData, MergedContext, parseSearchQueries, SearchQuery } from '../data/csvParser';
 import { ContextList } from './ContextList';
@@ -38,6 +38,33 @@ export const ContextManagement: React.FC<ContextManagementProps> = ({ brand }) =
   }, [brand.id]);
 
   const [selectedContext, setSelectedContext] = useState<MergedContext | null>(null);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const scrollPositionRef = useRef(0);
+
+  const selectContext = useCallback((ctx: MergedContext) => {
+    // Save scroll position before navigating
+    const scrollContainer = document.querySelector('[data-context-list-scroll]');
+    if (scrollContainer) {
+      scrollPositionRef.current = scrollContainer.scrollTop;
+    }
+    setSelectedContext(ctx);
+    history.pushState({ contextDetail: true }, '');
+  }, []);
+
+  const goBack = useCallback(() => {
+    setSelectedContext(null);
+  }, []);
+
+  // Handle browser back button
+  useEffect(() => {
+    const onPopState = () => {
+      if (selectedContext) {
+        setSelectedContext(null);
+      }
+    };
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [selectedContext]);
 
   if (selectedContext) {
     return (
@@ -45,7 +72,7 @@ export const ContextManagement: React.FC<ContextManagementProps> = ({ brand }) =
         brand={brand}
         context={selectedContext}
         searchQuery={searchQueriesMap.get(selectedContext.id)}
-        onBack={() => setSelectedContext(null)}
+        onBack={() => { history.back(); }}
       />
     );
   }
@@ -56,7 +83,10 @@ export const ContextManagement: React.FC<ContextManagementProps> = ({ brand }) =
         brand={brand}
         contexts={contexts}
         searchQueries={searchQueriesMap}
-        onSelectContext={setSelectedContext}
+        onSelectContext={selectContext}
+        selectedTags={selectedTags}
+        onSelectedTagsChange={setSelectedTags}
+        savedScrollPosition={scrollPositionRef.current}
       />
     </div>
   );
