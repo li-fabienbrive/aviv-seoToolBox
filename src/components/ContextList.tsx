@@ -440,7 +440,11 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
                                 const allActive = tags.length > 0 && tags.every(t => selectedTags.includes(t));
                                 return (
                                   <span key={i}
-                                    className={`relative inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-slate-100 text-slate-600 ring-1 ring-slate-200/60 cursor-pointer group/kf ${allActive ? 'ring-2 ring-indigo-400' : 'hover:ring-2 hover:ring-indigo-300'}`}
+                                    className={`relative inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold cursor-pointer group/kf transition-all ${
+                                      allActive
+                                        ? 'bg-indigo-100 text-indigo-700 ring-2 ring-indigo-400 shadow-sm'
+                                        : 'bg-slate-100 text-slate-600 ring-1 ring-slate-200/60 hover:ring-2 hover:ring-indigo-300'
+                                    }`}
                                     onClick={(e) => { e.stopPropagation(); if (tags.length > 0 && !allActive) addTags(tags); }}
                                   >
                                     <span className="text-slate-400 mr-1">{c.key}:</span>{c.value}
@@ -499,7 +503,11 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
                               return (
                                 <span
                                   key={i}
-                                  className={`relative inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-violet-50 text-violet-700 ring-1 ring-violet-200/60 cursor-pointer group/lv ${isActive ? 'ring-2 ring-indigo-400' : 'hover:ring-2 hover:ring-indigo-300'}`}
+                                  className={`relative inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold cursor-pointer group/lv transition-all ${
+                                    isActive
+                                      ? 'bg-indigo-100 text-indigo-700 ring-2 ring-indigo-400 shadow-sm'
+                                      : 'bg-violet-50 text-violet-700 ring-1 ring-violet-200/60 hover:ring-2 hover:ring-indigo-300'
+                                  }`}
                                   onClick={(e) => { e.stopPropagation(); if (!isActive) addTag(levelTag); }}
                                 >
                                   {levelNamesLocal[level] ?? level}
