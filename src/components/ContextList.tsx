@@ -118,6 +118,7 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
   const allTags = useMemo(() => {
     const tags = new Set<string>();
     contexts.forEach(ctx => {
+      if (ctx.alias) tags.add(`Alias:${ctx.alias}`);
       const sq = searchQueries.get(ctx.id);
       if (sq) {
         if (sq.distributionTypes) sq.distributionTypes.split(',').forEach(v => tags.add(v.trim()));
@@ -162,8 +163,9 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
     if (selectedTags.length === 0) return contexts;
     return contexts.filter(ctx => {
       const sq = searchQueries.get(ctx.id);
-      if (!sq) return false;
       return selectedTags.every(tag => {
+        if (tag.startsWith('Alias:') && ctx.alias === tag.substring(6)) return true;
+        if (!sq) return false;
         const distTypes = sq.distributionTypes ? sq.distributionTypes.split(',').map(v => v.trim()) : [];
         if (distTypes.includes(tag)) return true;
         const estTypes = sq.estateTypes ? sq.estateTypes.split(',').map(v => v.trim().replace(/_/g, ' ')) : [];
