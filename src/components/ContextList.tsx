@@ -119,6 +119,8 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
     const tags = new Set<string>();
     contexts.forEach(ctx => {
       if (ctx.alias) tags.add(`Alias:${ctx.alias}`);
+      ctx.openedLevels.forEach(level => tags.add(`Level:${levelNamesLocal[level] ?? level}`));
+      if (ctx.indexation) tags.add(`Indexation:${ctx.indexation}`);
       const sq = searchQueries.get(ctx.id);
       if (sq) {
         if (sq.distributionTypes) sq.distributionTypes.split(',').forEach(v => tags.add(v.trim()));
@@ -149,14 +151,34 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
     return Array.from(tags).sort();
   }, [contexts, searchQueries]);
 
+  // Build all unique URL templates (WL + Legacy) for URL-based suggestions
+  const allUrls = useMemo(() => {
+    const urls = new Set<string>();
+    contexts.forEach(ctx => {
+      const wl = buildWLUrl(ctx).template;
+      const legacy = buildLegacyUrl(ctx).template;
+      urls.add(`WL:${wl}`);
+      urls.add(`Legacy:${legacy}`);
+    });
+    return Array.from(urls).sort();
+  }, [contexts]);
+
   // Filter suggestions based on query, exclude already selected
+  // When query contains '/', suggest URLs instead of tags
+  // Regular tags are shown before Alias tags
   const suggestions = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase();
-    return allTags
-      .filter(tag => tag.toLowerCase().includes(q) && !selectedTags.includes(tag))
-      .slice(0, 8);
-  }, [query, allTags, selectedTags]);
+    if (query.includes('/')) {
+      return allUrls
+        .filter(url => url.toLowerCase().includes(q) && !selectedTags.includes(url))
+        .slice(0, 8);
+    }
+    const matching = allTags.filter(tag => tag.toLowerCase().includes(q) && !selectedTags.includes(tag));
+    const regular = matching.filter(tag => !tag.startsWith('Alias:'));
+    const aliases = matching.filter(tag => tag.startsWith('Alias:'));
+    return [...regular, ...aliases];
+  }, [query, allTags, allUrls, selectedTags]);
 
   // Filter contexts by selected tags
   const filteredContexts = useMemo(() => {
@@ -165,6 +187,13 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
       const sq = searchQueries.get(ctx.id);
       return selectedTags.every(tag => {
         if (tag.startsWith('Alias:') && ctx.alias === tag.substring(6)) return true;
+        if (tag.startsWith('WL:') && buildWLUrl(ctx).template === tag.substring(3)) return true;
+        if (tag.startsWith('Legacy:') && buildLegacyUrl(ctx).template === tag.substring(7)) return true;
+        if (tag.startsWith('Level:')) {
+          const levelName = tag.substring(6);
+          if (ctx.openedLevels.some(l => (levelNamesLocal[l] ?? l) === levelName)) return true;
+        }
+        if (tag.startsWith('Indexation:') && ctx.indexation === tag.substring(11)) return true;
         if (!sq) return false;
         const distTypes = sq.distributionTypes ? sq.distributionTypes.split(',').map(v => v.trim()) : [];
         if (distTypes.includes(tag)) return true;
@@ -464,30 +493,53 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
                         {/* Opened Levels */}
                         <td className="px-5 py-3 min-w-[160px] border-b border-r border-gray-200 align-middle">
                           <div className="flex flex-wrap gap-1">
-                            {ctx.openedLevels.map((level, i) => (
-                              <span key={i} className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-violet-50 text-violet-700 ring-1 ring-violet-200/60">
-                                {levelNamesLocal[level] ?? level}
-                              </span>
-                            ))}
+                            {ctx.openedLevels.map((level, i) => {
+                              const levelTag = `Level:${levelNamesLocal[level] ?? level}`;
+                              const isActive = selectedTags.includes(levelTag);
+                              return (
+                                <span
+                                  key={i}
+                                  className={`relative inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-violet-50 text-violet-700 ring-1 ring-violet-200/60 cursor-pointer group/lv ${isActive ? 'ring-2 ring-indigo-400' : 'hover:ring-2 hover:ring-indigo-300'}`}
+                                  onClick={(e) => { e.stopPropagation(); if (!isActive) addTag(levelTag); }}
+                                >
+                                  {levelNamesLocal[level] ?? level}
+                                  <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide bg-gray-800 text-white rounded-md whitespace-nowrap opacity-0 group-hover/lv:opacity-100 transition-opacity pointer-events-none z-[9999] flex items-center gap-1">
+                                    {isActive ? '✓ Filtered' : <><Filter className="w-3 h-3" /> Add filter</>}
+                                  </span>
+                                </span>
+                              );
+                            })}
                           </div>
                         </td>
 
                         {/* Indexation */}
                         <td className="px-5 py-3 border-b border-gray-200 align-middle">
-                          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold ${
-                            ctx.indexation === 'auto'
-                              ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60'
-                              : ctx.indexation === 'forced'
-                              ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200/60'
-                              : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200/60'
-                          }`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${
-                              ctx.indexation === 'auto' ? 'bg-emerald-500' :
-                              ctx.indexation === 'forced' ? 'bg-blue-500' :
-                              'bg-amber-500'
-                            }`}></span>
-                            {ctx.indexation}
-                          </span>
+                          {(() => {
+                            const idxTag = `Indexation:${ctx.indexation}`;
+                            const idxActive = selectedTags.includes(idxTag);
+                            return (
+                              <span
+                                className={`relative inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer group/ix ${
+                                  ctx.indexation === 'auto'
+                                    ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60'
+                                    : ctx.indexation === 'forced'
+                                    ? 'bg-blue-50 text-blue-700 ring-1 ring-blue-200/60'
+                                    : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200/60'
+                                } ${idxActive ? 'ring-2 ring-indigo-400' : 'hover:ring-2 hover:ring-indigo-300'}`}
+                                onClick={(e) => { e.stopPropagation(); if (!idxActive) addTag(idxTag); }}
+                              >
+                                <span className={`w-1.5 h-1.5 rounded-full ${
+                                  ctx.indexation === 'auto' ? 'bg-emerald-500' :
+                                  ctx.indexation === 'forced' ? 'bg-blue-500' :
+                                  'bg-amber-500'
+                                }`}></span>
+                                {ctx.indexation}
+                                <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1.5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide bg-gray-800 text-white rounded-md whitespace-nowrap opacity-0 group-hover/ix:opacity-100 transition-opacity pointer-events-none z-[9999] flex items-center gap-1">
+                                  {idxActive ? '✓ Filtered' : <><Filter className="w-3 h-3" /> Add filter</>}
+                                </span>
+                              </span>
+                            );
+                          })()}
                         </td>
                       </tr>
                     );
