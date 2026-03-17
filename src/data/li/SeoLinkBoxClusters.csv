@@ -1,0 +1,5 @@
+order,component_type,cluster_code,headline,current_context_ids,targeted_context_ids
+1,LinkBox,BuyHouseNewBuild_Slb,Rechercher un bien spécifique,22914,22914;29973
+2,LinkBox,BuyApartmentNewBuild_Slb,Rechercher un bien spécifique,61905,61905;53434
+3,LinkBox,BuyHouseHouseToBuildWithPlotSlb,Rechercher un bien spécifique,17163,17163;29973
+4,LinkBox,BuyStudioApartment_Slb,Plus,39097;29071,39097;29071

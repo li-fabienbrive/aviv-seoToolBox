@@ -1,0 +1,7 @@
+order,component_type,cluster_code,headline,current_context_ids,targeted_context_ids
+1001,"TopLinkBox","Buy_Apartment","Buy Apartment","90698","98041;20697;14925;83067;56752;28653;30575"
+1002,"TopLinkBox","Rent_Apartment_TopBox","Rent Apartment","25391","91187;60504;18917;17127;26446"
+1003,"TopLinkBox","Buy_Empty","Buy Empty","76413","20526;90698;44301;84069;71291"
+1004,"TopLinkBox","Rent_Empty","Rent Empty","98029","25391;71760;41117;51776;79116"
+1005,"TopLinkBox","Empty_Empty","Empty Empty","22959","20526;71760;90698;25391;98029"
+

@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { Brand } from '../data/brands';
-import { mergeContextData, MergedContext, parseSearchQueries, SearchQuery } from '../data/csvParser';
+import { mergeContextData, MergedContext, parseSearchQueries, SearchQuery, parseLinkBoxClusters, LinkBoxCluster } from '../data/csvParser';
 import { ContextList } from './ContextList';
 import { ContextDetailPage } from './ContextDetailPage';
 
@@ -13,11 +13,14 @@ import liSearchQueriesCsv from '../data/li/SerpSearchQueries.csv?raw';
 import iwtContextCsv from '../data/iwt/SerpContext.csv?raw';
 import iwtTextCsv from '../data/iwt/SerpTextConfig.csv?raw';
 import iwtSearchQueriesCsv from '../data/iwt/SerpSearchQueries.csv?raw';
+import slLinkBoxCsv from '../data/sl/SeoLinkBoxClusters.csv?raw';
+import liLinkBoxCsv from '../data/li/SeoLinkBoxClusters.csv?raw';
+import iwtLinkBoxCsv from '../data/iwt/SeoLinkBoxClusters.csv?raw';
 
-const csvByBrand: Record<string, { context: string; text: string; searchQueries: string }> = {
-  sl: { context: slContextCsv, text: slTextCsv, searchQueries: slSearchQueriesCsv },
-  li: { context: liContextCsv, text: liTextCsv, searchQueries: liSearchQueriesCsv },
-  iwt: { context: iwtContextCsv, text: iwtTextCsv, searchQueries: iwtSearchQueriesCsv },
+const csvByBrand: Record<string, { context: string; text: string; searchQueries: string; linkBox: string }> = {
+  sl: { context: slContextCsv, text: slTextCsv, searchQueries: slSearchQueriesCsv, linkBox: slLinkBoxCsv },
+  li: { context: liContextCsv, text: liTextCsv, searchQueries: liSearchQueriesCsv, linkBox: liLinkBoxCsv },
+  iwt: { context: iwtContextCsv, text: iwtTextCsv, searchQueries: iwtSearchQueriesCsv, linkBox: iwtLinkBoxCsv },
 };
 
 interface ContextManagementProps {
@@ -36,6 +39,16 @@ export const ContextManagement: React.FC<ContextManagementProps> = ({ brand }) =
     if (!csv) return new Map();
     return parseSearchQueries(csv.searchQueries);
   }, [brand.id]);
+
+  const linkBoxClusters = useMemo<LinkBoxCluster[]>(() => {
+    const csv = csvByBrand[brand.id];
+    if (!csv) return [];
+    return parseLinkBoxClusters(csv.linkBox);
+  }, [brand.id]);
+
+  const contextMap = useMemo<Map<string, MergedContext>>(() => {
+    return new Map(contexts.map(c => [c.id, c]));
+  }, [contexts]);
 
   const [selectedContext, setSelectedContext] = useState<MergedContext | null>(null);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -72,6 +85,9 @@ export const ContextManagement: React.FC<ContextManagementProps> = ({ brand }) =
         brand={brand}
         context={selectedContext}
         searchQuery={searchQueriesMap.get(selectedContext.id)}
+        linkBoxClusters={linkBoxClusters}
+        contextMap={contextMap}
+        searchQueriesMap={searchQueriesMap}
         onBack={() => { history.back(); }}
       />
     );

@@ -255,6 +255,36 @@ function parseOpenedLevels(raw: string): OpenedLevel[] {
   });
 }
 
+export interface LinkBoxClusterRow {
+  order: string;
+  component_type: string;
+  cluster_code: string;
+  headline: string;
+  current_context_ids: string;
+  targeted_context_ids: string;
+}
+
+export interface LinkBoxCluster {
+  order: number;
+  componentType: string;
+  clusterCode: string;
+  headline: string;
+  currentContextIds: string[];
+  targetedContextIds: string[];
+}
+
+export function parseLinkBoxClusters(raw: string): LinkBoxCluster[] {
+  const rows = parseCSV<LinkBoxClusterRow>(raw);
+  return rows.map(row => ({
+    order: parseInt(row.order, 10),
+    componentType: row.component_type,
+    clusterCode: row.cluster_code,
+    headline: row.headline,
+    currentContextIds: row.current_context_ids ? row.current_context_ids.split(';').map(id => id.trim()) : [],
+    targetedContextIds: row.targeted_context_ids ? row.targeted_context_ids.split(';').map(id => id.trim()) : [],
+  }));
+}
+
 export function mergeContextData(contextCsv: string, textConfigCsv: string): MergedContext[] {
   const contexts = parseCSV<SerpContextRow>(contextCsv);
   const textConfigs = parseCSV<SerpTextConfigRow>(textConfigCsv);
