@@ -94,10 +94,10 @@ export const ContextDetailPage: React.FC<ContextDetailPageProps> = ({ brand: _br
 
       <div className="max-w-6xl mx-auto px-8 py-8 space-y-8">
 
-        {/* Section: Critères & Caractéristiques */}
+        {/* Section: Criteria & Keyfacts */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-            <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Critères de recherche & Caractéristiques</h2>
+            <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Search Criteria & Keyfacts</h2>
           </div>
           <div className="px-6 py-5">
             {/* Alias */}
@@ -129,7 +129,7 @@ export const ContextDetailPage: React.FC<ContextDetailPageProps> = ({ brand: _br
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-400">Aucune SearchQuery associée</p>
+              <p className="text-sm text-gray-400">No associated SearchQuery</p>
             )}
           </div>
         </div>
@@ -137,7 +137,7 @@ export const ContextDetailPage: React.FC<ContextDetailPageProps> = ({ brand: _br
         {/* Section: SEO */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200/80 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50">
-            <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">Contenu SEO</h2>
+            <h2 className="text-sm font-bold text-gray-700 uppercase tracking-wide">SEO Content</h2>
           </div>
           <div className="px-6 py-5">
             {/* Text fields */}

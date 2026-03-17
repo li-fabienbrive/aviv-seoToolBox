@@ -99,7 +99,7 @@ export const BrandPages: React.FC<BrandPagesProps> = ({ brand, page }) => {
                     <div className="text-sm text-gray-600">{sitemap.urls} URLs</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm text-gray-600">Mis à jour</div>
+                    <div className="text-sm text-gray-600">Updated</div>
                     <div className="text-xs text-gray-500">{sitemap.lastUpdate}</div>
                   </div>
                 </div>
@@ -131,7 +131,7 @@ export const BrandPages: React.FC<BrandPagesProps> = ({ brand, page }) => {
           </h1>
         </div>
         <div className="flex items-center space-x-2 text-sm text-gray-600">
-          <span>Marque:</span>
+          <span>Brand:</span>
           <span className={`px-2 py-1 rounded-full text-xs font-medium ${brand.colors.secondary} ${brand.colors.accent}`}>
             {brand.name}
           </span>

@@ -237,7 +237,7 @@ export const levelNames: Record<string, string> = {
   '500': 'MicroRegion',
   '600': 'Province',
   '800': 'Municipality',
-  '900': 'Borough',
+  '900': 'Borough/NBH1',
   '1000': 'Neighborhood',
   '1100': 'MicroNeighborhood',
   '1200': 'Bloc',

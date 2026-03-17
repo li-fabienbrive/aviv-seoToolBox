@@ -36,7 +36,7 @@ const levelNamesLocal = levelNames;
 function getCharacteristics(sq: SearchQuery | undefined): { key: string; value: string }[] {
   if (!sq) return [];
   const chars: { key: string; value: string }[] = [];
-  // Exclude: distributionTypes, estateTypes, estateSubTypes (shown in critères column)
+  // Exclude: distributionTypes, estateTypes, estateSubTypes (shown in criteria column)
   if (sq.classifiedBusiness) chars.push({ key: 'ClassifiedBusiness', value: sq.classifiedBusiness });
   if (sq.numberOfRoomsMin) chars.push({ key: 'RoomsMin', value: sq.numberOfRoomsMin });
   if (sq.numberOfRoomsMax) chars.push({ key: 'RoomsMax', value: sq.numberOfRoomsMax });
@@ -163,7 +163,7 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
             <div className={`w-3 h-3 rounded-full ${brand.colors.primary} ring-4 ring-opacity-20 ${brand.colors.secondary}`}></div>
             <div>
               <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{t.contextManagement.title} — {brand.name}</h1>
-              <p className="text-xs text-gray-500 mt-0.5 font-medium">{filteredContexts.length} / {contexts.length} contextes</p>
+              <p className="text-xs text-gray-500 mt-0.5 font-medium">{filteredContexts.length} / {contexts.length} contexts</p>
             </div>
           </div>
         </div>
@@ -229,7 +229,7 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
             <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-4">
               <span className="text-2xl text-gray-400">📋</span>
             </div>
-            <p className="text-gray-500 font-medium text-sm">Aucun contexte trouvé</p>
+            <p className="text-gray-500 font-medium text-sm">No context found</p>
           </div>
         ) : (
           <div className="px-6 py-4">
@@ -237,9 +237,9 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
               <table className="w-full text-sm border-collapse">
                 <thead>
                   <tr className="bg-gray-50/80">
-                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-5 py-3.5 border-b-2 border-r border-gray-300/60">Critères de recherche</th>
-                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-5 py-3.5 border-b-2 border-r border-gray-300/60">Caractéristiques</th>
-                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-5 py-3.5 border-b-2 border-r border-gray-300/60">Contenu SEO</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-5 py-3.5 border-b-2 border-r border-gray-300/60">Search Criteria</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-5 py-3.5 border-b-2 border-r border-gray-300/60">Keyfacts</th>
+                    <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-5 py-3.5 border-b-2 border-r border-gray-300/60">SEO Content</th>
                     <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-5 py-3.5 border-b-2 border-r border-gray-300/60">WL Url</th>
                     <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-5 py-3.5 border-b-2 border-r border-gray-300/60">Legacy Url</th>
                     <th className="text-left text-[11px] font-semibold text-gray-400 uppercase tracking-widest px-5 py-3.5 border-b-2 border-r border-gray-300/60">Opened Levels</th>
@@ -261,7 +261,7 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
 
                     return (
                       <tr key={ctx.id} onClick={() => onSelectContext(ctx)} className={`group transition-colors duration-150 cursor-pointer hover:bg-indigo-50/50 h-24 ${isEven ? 'bg-white' : 'bg-gray-50/30'}`}>
-                        {/* Critères de recherche */}
+                        {/* Search Criteria */}
                         <td className="px-5 py-3 min-w-[200px] border-b border-r border-gray-200 align-middle">
                           <p className="font-semibold text-gray-900 text-[13px] leading-tight">{ctx.alias}</p>
                           <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
@@ -287,7 +287,7 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
                           </div>
                         </td>
 
-                        {/* Caractéristiques */}
+                        {/* Keyfacts */}
                         <td className="px-5 py-3 border-b border-r border-gray-200 align-middle">
                           {chars.length > 0 ? (
                             <div className="flex flex-wrap gap-1.5">
@@ -302,7 +302,7 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
                           )}
                         </td>
 
-                        {/* Contenu SEO */}
+                        {/* SEO Content */}
                         <td className="px-5 py-3 min-w-[300px] border-b border-r border-gray-200 align-middle">
                           <div className="space-y-1.5">
                             <p className="text-xs leading-relaxed">

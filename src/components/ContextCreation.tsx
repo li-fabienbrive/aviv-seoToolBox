@@ -14,7 +14,7 @@ export const ContextCreation: React.FC<ContextCreationProps> = ({ brand, isOpen,
   const t = useTranslation(brand.locale);
 
   const [formData, setFormData] = useState({
-    // Géolocalisation
+    // Geolocation
     geoLevels: {
       country: false,
       region: false,
@@ -29,22 +29,22 @@ export const ContextCreation: React.FC<ContextCreationProps> = ({ brand, isOpen,
       region: 'Île-de-France',
       province: 'Paris',
       city: 'Paris',
-      neighborhood1: '15e arrondissement',
+      neighborhood1: '15th district',
       neighborhood2: 'Grenelle',
       neighborhood3: 'Front de Seine'
     },
     
-    // Types de transaction
+    // Transaction types
     distributionType: [] as string[],
     
-    // Types de propriété
+    // Property types
     propertyTypes: [] as string[],
     subPropertyTypes: [] as string[],
     
-    // Types de projet
+    // Project types
     projectTypes: [] as string[],
     
-    // Critères numériques
+    // Numeric criteria
     priceMin: '',
     priceMax: '',
     numberOfRoomsMin: '',
@@ -60,10 +60,10 @@ export const ContextCreation: React.FC<ContextCreationProps> = ({ brand, isOpen,
     floorNumberMin: '',
     floorNumberMax: '',
     
-    // Caractéristiques
+    // Keyfacts
     featuresIncluded: [] as string[],
     
-    // Configuration LinkBox
+    // LinkBox Configuration
     linkBoxConfig: {
       topRegions: false,
       topProvinces: false,
@@ -140,7 +140,7 @@ export const ContextCreation: React.FC<ContextCreationProps> = ({ brand, isOpen,
   const handleSave = () => {
     const newContext = {
       id: Date.now(),
-      title: formData.metaTitle || 'Nouveau contexte',
+      title: formData.metaTitle || 'New context',
       h1: formData.h1,
       metaDesc: formData.metaDescription,
       url: formData.urlPattern,
@@ -176,7 +176,7 @@ export const ContextCreation: React.FC<ContextCreationProps> = ({ brand, isOpen,
         </div>
 
         <div className="p-6 space-y-8">
-          {/* Géolocalisation */}
+          {/* Geolocation */}
           <div className="bg-gray-50 p-6 rounded-lg">
             <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <MapPin className="mr-2 h-5 w-5" />
@@ -208,7 +208,7 @@ export const ContextCreation: React.FC<ContextCreationProps> = ({ brand, isOpen,
             </div>
           </div>
 
-          {/* Types de transaction */}
+          {/* Transaction types */}
           <div>
             <h4 className="text-lg font-semibold text-gray-900 mb-4">{t.contextCreation.transactionType}</h4>
             <div className="flex space-x-4">
@@ -226,7 +226,7 @@ export const ContextCreation: React.FC<ContextCreationProps> = ({ brand, isOpen,
             </div>
           </div>
 
-          {/* Types de propriété */}
+          {/* Property types */}
           <div>
             <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <Home className="mr-2 h-5 w-5" />
@@ -262,7 +262,7 @@ export const ContextCreation: React.FC<ContextCreationProps> = ({ brand, isOpen,
             </div>
           </div>
 
-          {/* Types de projet */}
+          {/* Project types */}
           <div>
             <h4 className="text-lg font-semibold text-gray-900 mb-4">{t.contextCreation.projectTypes}</h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
@@ -280,7 +280,7 @@ export const ContextCreation: React.FC<ContextCreationProps> = ({ brand, isOpen,
             </div>
           </div>
 
-          {/* Critères numériques */}
+          {/* Numeric criteria */}
           <div className="bg-blue-50 p-6 rounded-lg">
             <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <Euro className="mr-2 h-5 w-5" />
@@ -364,7 +364,7 @@ export const ContextCreation: React.FC<ContextCreationProps> = ({ brand, isOpen,
             </div>
           </div>
 
-          {/* Caractéristiques */}
+          {/* Keyfacts */}
           <div>
             <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
               <CheckSquare className="mr-2 h-5 w-5" />
@@ -385,7 +385,7 @@ export const ContextCreation: React.FC<ContextCreationProps> = ({ brand, isOpen,
             </div>
           </div>
 
-          {/* Configuration LinkBox */}
+          {/* LinkBox Configuration */}
           <div className="bg-green-50 p-6 rounded-lg">
             <h4 className="text-lg font-semibold text-gray-900 mb-4">{t.contextCreation.linkBoxConfig}</h4>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
