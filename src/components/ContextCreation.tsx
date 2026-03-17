@@ -429,17 +429,7 @@ export const ContextCreation: React.FC<ContextCreationProps> = ({ brand, isOpen,
                 />
                 <span className="text-sm">{t.contextCreation.forced}</span>
               </label>
-              <label className="flex items-center space-x-2">
-                <input
-                  type="radio"
-                  name="indexation"
-                  value="temporary"
-                  checked={formData.indexation === 'temporary'}
-                  onChange={(e) => setFormData(prev => ({ ...prev, indexation: e.target.value }))}
-                  className="border-gray-300"
-                />
-                <span className="text-sm">{t.contextCreation.temporary}</span>
-              </label>
+
             </div>
           </div>
 

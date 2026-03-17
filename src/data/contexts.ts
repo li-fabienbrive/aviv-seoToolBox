@@ -134,7 +134,7 @@ function generateContexts(): Context[] {
           bedrooms: `${bedroomsMin} - ${bedroomsMax}`,
           bathrooms: `${Math.max(1, bedroomsMin)} - ${bedroomsMax}`
         },
-        indexation: ['auto', 'forced', 'temporary'][Math.floor(Math.random() * 3)],
+        indexation: ['auto', 'forced'][Math.floor(Math.random() * 2)],
         features: selectedFeatures,
         geoLevels: {
           country: 'France',

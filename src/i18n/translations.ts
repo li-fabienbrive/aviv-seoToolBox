@@ -79,7 +79,6 @@ export interface Translations {
     indexing: string;
     auto: string;
     forced: string;
-    temporary: string;
     seoConfig: string;
     h1: string;
     metaTitle: string;
@@ -192,7 +191,6 @@ export const translations: Record<'en', Translations> = {
       indexing: 'Indexation',
       auto: 'Auto',
       forced: 'Forced',
-      temporary: 'Temporary',
       seoConfig: 'SEO Configuration',
       h1: 'H1',
       metaTitle: 'Meta Title',

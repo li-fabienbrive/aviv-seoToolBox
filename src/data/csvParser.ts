@@ -225,7 +225,7 @@ export interface MergedContext {
   indexation: string;
 }
 
-function hasTemporaryLevels(openedLevels: string): boolean {
+function hasForcedLevels(openedLevels: string): boolean {
   if (!openedLevels) return false;
   return openedLevels.split('|').some(l => l.includes(':'));
 }
@@ -289,7 +289,7 @@ export function mergeContextData(contextCsv: string, textConfigCsv: string): Mer
       breadcrumbLinkText: text?.BreadcrumbLinkText ?? '',
       linkboxLinkText: text?.LinkboxLinkText ?? '',
       topLinkboxLinkText: text?.TopLinkboxLinkText ?? '',
-      indexation: hasTemporaryLevels(ctx.OpenedLevels) ? 'temporary' : 'auto',
+      indexation: hasForcedLevels(ctx.OpenedLevels) ? 'forced' : 'auto',
     };
   });
 }

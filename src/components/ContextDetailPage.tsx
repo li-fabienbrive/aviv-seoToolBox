@@ -79,7 +79,7 @@ export const ContextDetailPage: React.FC<ContextDetailPageProps> = ({ brand: _br
   return (
     <div className="min-h-full bg-gradient-to-br from-gray-50 to-gray-100/50">
       {/* Top bar */}
-      <div className="sticky top-0 bg-white/80 backdrop-blur-md border-b border-gray-200/60 px-8 py-4 z-10 flex items-center gap-4">
+      <div className="sticky top-16 bg-white/80 backdrop-blur-md border-b border-gray-200/60 px-8 py-4 z-30 flex items-center gap-4">
         <button
           onClick={onBack}
           className="p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -175,10 +175,10 @@ export const ContextDetailPage: React.FC<ContextDetailPageProps> = ({ brand: _br
             <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold ${
               ctx.indexation === 'auto'
                 ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60'
-                : 'bg-amber-50 text-amber-700 ring-1 ring-amber-200/60'
+                : 'bg-blue-50 text-blue-700 ring-1 ring-blue-200/60'
             }`}>
               <span className={`w-1.5 h-1.5 rounded-full ${
-                ctx.indexation === 'auto' ? 'bg-emerald-500' : 'bg-amber-500'
+                ctx.indexation === 'auto' ? 'bg-emerald-500' : 'bg-blue-500'
               }`}></span>
               {ctx.indexation}
             </span>
@@ -197,8 +197,8 @@ export const ContextDetailPage: React.FC<ContextDetailPageProps> = ({ brand: _br
                       <span className="text-sm font-medium text-gray-800">{level.name}</span>
                     </div>
                     {level.forcedUntil ? (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-amber-50 text-amber-700 ring-1 ring-amber-200/60">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500"></span>
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 ring-1 ring-blue-200/60">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
                         forced until {level.forcedUntil}
                       </span>
                     ) : (
