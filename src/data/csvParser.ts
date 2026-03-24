@@ -143,6 +143,71 @@ export interface SearchQuery {
   pagingOrder: string;
 }
 
+export interface SerpWlUrlRow {
+  ContextId: string;
+  WlUrlPath: string;
+  ExampleUrl: string;
+}
+
+export interface SerpLegacyUrlRow {
+  ContextId: string;
+  GeoLevels: string;
+  GeoLevel?: string;
+  LegacyUrlPattern: string;
+  ExampleUrl: string;
+}
+
+export interface SerpLegacyUrlExampleRow {
+  ContextId: string;
+  Alias: string;
+  GeoLevel: string;
+  LocationAvivGeoId: string;
+  LocationName: string;
+  LocationSlug: string;
+  ExampleUrl: string;
+  GeoLevels?: string;
+  WhiteLabelUrl?: string;
+}
+
+export interface SerpWlUrlExampleRow {
+  ContextId: string;
+  Alias: string;
+  GeoLevel: string;
+  LocationAvivGeoId: string;
+  LocationName: string;
+  WhiteLabelUrl: string;
+  GeoLevels?: string;
+}
+
+export interface ContextGeoUrlExample {
+  geoLevel: string;
+  locationAvivGeoId: string;
+  locationName: string;
+  locationSlug: string;
+  legacyUrlExample: string;
+  wlUrlExample: string;
+}
+
+export interface LegacyUrlVariant {
+  geoLevels: string;
+  legacyUrlPattern: string;
+  legacyExampleUrl: string;
+  wlExampleUrl: string;
+  exampleGeoLevel: string;
+  locationAvivGeoId: string;
+  locationName: string;
+  locationSlug: string;
+}
+
+export interface ContextUrlMapping {
+  contextId: string;
+  wlUrlPath: string;
+  wlExampleUrl: string;
+  legacyVariants: LegacyUrlVariant[];
+  geoExamples: ContextGeoUrlExample[];
+  mappingStatus: 'MAPPED' | 'WL_ONLY';
+}
+
 export function parseSearchQueries(raw: string): Map<string, SearchQuery> {
   const rows = parseSemicolonCSV<SerpSearchQueryRow>(raw);
   const map = new Map<string, SearchQuery>();
@@ -271,6 +336,225 @@ export interface LinkBoxCluster {
   headline: string;
   currentContextIds: string[];
   targetedContextIds: string[];
+}
+
+function normalizeGeoLevel(level: string): string {
+  return level.trim().toLowerCase().replace(/[^a-z]/g, '');
+}
+
+function getGeoSelector(geoLevel?: string, geoLevels?: string): string {
+  return geoLevels?.trim() || geoLevel?.trim() || '';
+}
+
+function normalizeLegacyGeoLevel(level: string): string {
+  const normalized = normalizeGeoLevel(level);
+  if (normalized === 'boroughnbh' || normalized === 'boroughnbh1') return 'borough';
+  return normalized;
+}
+
+function getGeoLevelPreferences(geoLevels: string): string[] {
+  const specificityOrder = [
+    'microneighborhood',
+    'neighborhood',
+    'borough',
+    'municipality',
+    'province',
+    'region',
+    'microregion',
+    'macroregion',
+    'country',
+    'bloc',
+  ];
+
+  const normalizedSet = new Set<string>();
+  geoLevels.split('|').forEach(level => {
+    const normalized = normalizeLegacyGeoLevel(level);
+    if (!normalized) return;
+    if (normalized === 'microneighborhood') {
+      normalizedSet.add('microneighborhood');
+      normalizedSet.add('neighborhood');
+      return;
+    }
+    normalizedSet.add(normalized);
+  });
+
+  return specificityOrder.filter(level => normalizedSet.has(level));
+}
+
+function pickGeoExampleForLegacy(
+  geoExamples: ContextGeoUrlExample[],
+  legacyGeoSelector: string,
+): ContextGeoUrlExample | undefined {
+  if (geoExamples.length === 0) return undefined;
+
+  const byGeo = new Map<string, ContextGeoUrlExample[]>();
+  for (const geoExample of geoExamples) {
+    const normalizedGeo = normalizeGeoLevel(geoExample.geoLevel);
+    const existing = byGeo.get(normalizedGeo) ?? [];
+    existing.push(geoExample);
+    byGeo.set(normalizedGeo, existing);
+  }
+
+  const preferred = getGeoLevelPreferences(legacyGeoSelector);
+  for (const geoLevel of preferred) {
+    const match = byGeo.get(geoLevel)?.[0];
+    if (match) return match;
+  }
+
+  return geoExamples[0];
+}
+
+export function parseContextUrlMappings(
+  wlCsv: string,
+  legacyCsv: string,
+  legacyUrlExamplesCsv: string,
+  wlUrlExamplesCsv: string,
+): Map<string, ContextUrlMapping> {
+  const wlRows = parseCSV<SerpWlUrlRow>(wlCsv);
+  const legacyRows = parseCSV<SerpLegacyUrlRow>(legacyCsv);
+  const legacyUrlExampleRows = parseCSV<SerpLegacyUrlExampleRow>(legacyUrlExamplesCsv);
+  const wlUrlExampleRows = parseCSV<SerpWlUrlExampleRow>(wlUrlExamplesCsv);
+
+  const legacyByContext = new Map<string, LegacyUrlVariant[]>();
+  for (const row of legacyRows) {
+    const contextId = row.ContextId?.trim();
+    if (!contextId) continue;
+    const legacyGeoSelector = getGeoSelector(row.GeoLevel, row.GeoLevels);
+
+    const existing = legacyByContext.get(contextId) ?? [];
+    existing.push({
+      geoLevels: legacyGeoSelector,
+      legacyUrlPattern: row.LegacyUrlPattern?.trim() ?? '',
+      legacyExampleUrl: row.ExampleUrl?.trim() ?? '',
+      wlExampleUrl: '',
+      exampleGeoLevel: '',
+      locationAvivGeoId: '',
+      locationName: '',
+      locationSlug: '',
+    });
+    legacyByContext.set(contextId, existing);
+  }
+
+  const wlExamplesByContextAndGeo = new Map<string, Map<string, SerpWlUrlExampleRow[]>>();
+  for (const row of wlUrlExampleRows) {
+    const contextId = row.ContextId?.trim();
+    if (!contextId) continue;
+    const geoSelector = getGeoSelector(row.GeoLevel, row.GeoLevels);
+    const normalizedGeo = normalizeGeoLevel(geoSelector);
+    if (!normalizedGeo) continue;
+
+    const byGeo = wlExamplesByContextAndGeo.get(contextId) ?? new Map<string, SerpWlUrlExampleRow[]>();
+    const rows = byGeo.get(normalizedGeo) ?? [];
+    rows.push(row);
+    byGeo.set(normalizedGeo, rows);
+    wlExamplesByContextAndGeo.set(contextId, byGeo);
+  }
+
+  const geoExamplesByContext = new Map<string, ContextGeoUrlExample[]>();
+  for (const row of legacyUrlExampleRows) {
+    const contextId = row.ContextId?.trim();
+    if (!contextId) continue;
+    const geoSelector = getGeoSelector(row.GeoLevel, row.GeoLevels);
+    const normalizedGeo = normalizeGeoLevel(geoSelector);
+    const wlRow = wlExamplesByContextAndGeo.get(contextId)?.get(normalizedGeo)?.[0];
+
+    const existing = geoExamplesByContext.get(contextId) ?? [];
+    existing.push({
+      geoLevel: geoSelector,
+      locationAvivGeoId: row.LocationAvivGeoId?.trim() ?? '',
+      locationName: row.LocationName?.trim() ?? '',
+      locationSlug: row.LocationSlug?.trim() ?? '',
+      legacyUrlExample: row.ExampleUrl?.trim() ?? '',
+      wlUrlExample: wlRow?.WhiteLabelUrl?.trim() || row.WhiteLabelUrl?.trim() || '',
+    });
+    geoExamplesByContext.set(contextId, existing);
+  }
+
+  for (const row of wlUrlExampleRows) {
+    const contextId = row.ContextId?.trim();
+    if (!contextId) continue;
+    const geoSelector = getGeoSelector(row.GeoLevel, row.GeoLevels);
+    const normalizedGeo = normalizeGeoLevel(geoSelector);
+    if (!normalizedGeo) continue;
+
+    const existing = geoExamplesByContext.get(contextId) ?? [];
+    const hasSameGeo = existing.some(example => normalizeGeoLevel(example.geoLevel) === normalizedGeo);
+    if (hasSameGeo) {
+      if (!geoExamplesByContext.has(contextId)) {
+        geoExamplesByContext.set(contextId, existing);
+      }
+      continue;
+    }
+
+    existing.push({
+      geoLevel: geoSelector,
+      locationAvivGeoId: row.LocationAvivGeoId?.trim() ?? '',
+      locationName: row.LocationName?.trim() ?? '',
+      locationSlug: '',
+      legacyUrlExample: '',
+      wlUrlExample: row.WhiteLabelUrl?.trim() ?? '',
+    });
+    geoExamplesByContext.set(contextId, existing);
+  }
+
+  const mapping = new Map<string, ContextUrlMapping>();
+  const wlRowByContext = new Map<string, SerpWlUrlRow>();
+  for (const row of wlRows) {
+    const contextId = row.ContextId?.trim();
+    if (!contextId) continue;
+    wlRowByContext.set(contextId, row);
+  }
+
+  for (const row of wlRows) {
+    const contextId = row.ContextId?.trim();
+    if (!contextId) continue;
+
+    let geoExamples = geoExamplesByContext.get(contextId) ?? [];
+    if (geoExamples.length === 0) {
+      const wlRow = wlRowByContext.get(contextId);
+      const legacyFallbackRows = (legacyByContext.get(contextId) ?? []).map(variant => ({
+        geoLevel: variant.geoLevels || 'Unknown',
+        locationAvivGeoId: '',
+        locationName: '',
+        locationSlug: '',
+        legacyUrlExample: variant.legacyExampleUrl || '',
+        wlUrlExample: wlRow?.ExampleUrl?.trim() || '',
+      }));
+      if (legacyFallbackRows.length > 0) {
+        geoExamples = legacyFallbackRows;
+      }
+    }
+
+    const legacyVariants = (legacyByContext.get(contextId) ?? []).map(variant => {
+      const selectedExample = pickGeoExampleForLegacy(geoExamples, variant.geoLevels);
+      return {
+        ...variant,
+        legacyExampleUrl: selectedExample?.legacyUrlExample || variant.legacyExampleUrl,
+        wlExampleUrl: selectedExample?.wlUrlExample || '',
+        exampleGeoLevel: selectedExample?.geoLevel || '',
+        locationAvivGeoId: selectedExample?.locationAvivGeoId || '',
+        locationName: selectedExample?.locationName || '',
+        locationSlug: selectedExample?.locationSlug || '',
+      };
+    });
+
+    const wlFallbackFromWlCsv = row.ExampleUrl?.trim() ?? '';
+    const wlExampleFromGeo =
+      geoExamples.find(example => example.wlUrlExample)?.wlUrlExample ||
+      legacyVariants.find(variant => variant.wlExampleUrl)?.wlExampleUrl ||
+      '';
+
+    mapping.set(contextId, {
+      contextId,
+      wlUrlPath: row.WlUrlPath?.trim() ?? '',
+      wlExampleUrl: wlExampleFromGeo || wlFallbackFromWlCsv,
+      legacyVariants,
+      geoExamples,
+      mappingStatus: legacyVariants.length > 0 ? 'MAPPED' : 'WL_ONLY',
+    });
+  }
+
+  return mapping;
 }
 
 export function parseLinkBoxClusters(raw: string): LinkBoxCluster[] {

@@ -1,6 +1,15 @@
 import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { Brand } from '../data/brands';
-import { mergeContextData, MergedContext, parseSearchQueries, SearchQuery, parseLinkBoxClusters, LinkBoxCluster } from '../data/csvParser';
+import {
+  mergeContextData,
+  MergedContext,
+  parseSearchQueries,
+  SearchQuery,
+  parseLinkBoxClusters,
+  LinkBoxCluster,
+  parseContextUrlMappings,
+  ContextUrlMapping,
+} from '../data/csvParser';
 import { ContextList } from './ContextList';
 import { ContextDetailPage } from './ContextDetailPage';
 
@@ -16,11 +25,59 @@ import iwtSearchQueriesCsv from '../data/iwt/SerpSearchQueries.csv?raw';
 import slLinkBoxCsv from '../data/sl/SeoLinkBoxClusters.csv?raw';
 import liLinkBoxCsv from '../data/li/SeoLinkBoxClusters.csv?raw';
 import iwtLinkBoxCsv from '../data/iwt/SeoLinkBoxClusters.csv?raw';
+import slWlUrlsCsv from '../data/sl/SerpWlUrls.csv?raw';
+import liWlUrlsCsv from '../data/li/SerpWlUrls.csv?raw';
+import iwtWlUrlsCsv from '../data/iwt/SerpWlUrls.csv?raw';
+import slLegacyUrlsCsv from '../data/sl/SerpLegacyUrls.csv?raw';
+import liLegacyUrlsCsv from '../data/li/SerpLegacyUrls.csv?raw';
+import iwtLegacyUrlsCsv from '../data/iwt/SerpLegacyUrls.csv?raw';
+import slLegacyUrlExamplesCsv from '../data/sl/SerpLegacyUrlExamples.csv?raw';
+import liLegacyUrlExamplesCsv from '../data/li/SerpLegacyUrlExamples.csv?raw';
+import iwtLegacyUrlExamplesCsv from '../data/iwt/SerpLegacyUrlExamples.csv?raw';
+import slWlUrlExamplesCsv from '../data/sl/SerpWlUrlExamples.csv?raw';
+import liWlUrlExamplesCsv from '../data/li/SerpWlUrlExamples.csv?raw';
+import iwtWlUrlExamplesCsv from '../data/iwt/SerpWlUrlExamples.csv?raw';
 
-const csvByBrand: Record<string, { context: string; text: string; searchQueries: string; linkBox: string }> = {
-  sl: { context: slContextCsv, text: slTextCsv, searchQueries: slSearchQueriesCsv, linkBox: slLinkBoxCsv },
-  li: { context: liContextCsv, text: liTextCsv, searchQueries: liSearchQueriesCsv, linkBox: liLinkBoxCsv },
-  iwt: { context: iwtContextCsv, text: iwtTextCsv, searchQueries: iwtSearchQueriesCsv, linkBox: iwtLinkBoxCsv },
+const csvByBrand: Record<string, {
+  context: string;
+  text: string;
+  searchQueries: string;
+  linkBox: string;
+  wlUrls: string;
+  legacyUrls: string;
+  legacyUrlExamples: string;
+  wlUrlExamples: string;
+}> = {
+  sl: {
+    context: slContextCsv,
+    text: slTextCsv,
+    searchQueries: slSearchQueriesCsv,
+    linkBox: slLinkBoxCsv,
+    wlUrls: slWlUrlsCsv,
+    legacyUrls: slLegacyUrlsCsv,
+    legacyUrlExamples: slLegacyUrlExamplesCsv,
+    wlUrlExamples: slWlUrlExamplesCsv,
+  },
+  li: {
+    context: liContextCsv,
+    text: liTextCsv,
+    searchQueries: liSearchQueriesCsv,
+    linkBox: liLinkBoxCsv,
+    wlUrls: liWlUrlsCsv,
+    legacyUrls: liLegacyUrlsCsv,
+    legacyUrlExamples: liLegacyUrlExamplesCsv,
+    wlUrlExamples: liWlUrlExamplesCsv,
+  },
+  iwt: {
+    context: iwtContextCsv,
+    text: iwtTextCsv,
+    searchQueries: iwtSearchQueriesCsv,
+    linkBox: iwtLinkBoxCsv,
+    wlUrls: iwtWlUrlsCsv,
+    legacyUrls: iwtLegacyUrlsCsv,
+    legacyUrlExamples: iwtLegacyUrlExamplesCsv,
+    wlUrlExamples: iwtWlUrlExamplesCsv,
+  },
 };
 
 interface ContextManagementProps {
@@ -46,6 +103,12 @@ export const ContextManagement: React.FC<ContextManagementProps> = ({ brand }) =
     return parseLinkBoxClusters(csv.linkBox);
   }, [brand.id]);
 
+  const contextUrlMappings = useMemo<Map<string, ContextUrlMapping>>(() => {
+    const csv = csvByBrand[brand.id];
+    if (!csv) return new Map();
+    return parseContextUrlMappings(csv.wlUrls, csv.legacyUrls, csv.legacyUrlExamples, csv.wlUrlExamples);
+  }, [brand.id]);
+
   const contextMap = useMemo<Map<string, MergedContext>>(() => {
     return new Map(contexts.map(c => [c.id, c]));
   }, [contexts]);
@@ -64,10 +127,6 @@ export const ContextManagement: React.FC<ContextManagementProps> = ({ brand }) =
     history.pushState({ contextDetail: true }, '');
   }, []);
 
-  const goBack = useCallback(() => {
-    setSelectedContext(null);
-  }, []);
-
   // Handle browser back button
   useEffect(() => {
     const onPopState = () => {
@@ -82,8 +141,8 @@ export const ContextManagement: React.FC<ContextManagementProps> = ({ brand }) =
   if (selectedContext) {
     return (
       <ContextDetailPage
-        brand={brand}
         context={selectedContext}
+        urlMapping={contextUrlMappings.get(selectedContext.id)}
         searchQuery={searchQueriesMap.get(selectedContext.id)}
         linkBoxClusters={linkBoxClusters}
         contextMap={contextMap}
@@ -98,6 +157,7 @@ export const ContextManagement: React.FC<ContextManagementProps> = ({ brand }) =
       <ContextList
         brand={brand}
         contexts={contexts}
+        contextUrlMappings={contextUrlMappings}
         searchQueries={searchQueriesMap}
         onSelectContext={selectContext}
         selectedTags={selectedTags}

@@ -1,13 +1,14 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { X, Filter } from 'lucide-react';
 import { Brand } from '../data/brands';
-import { MergedContext, SearchQuery, levelNames } from '../data/csvParser';
+import { MergedContext, SearchQuery, levelNames, ContextUrlMapping } from '../data/csvParser';
 import { useTranslation } from '../i18n/translations';
-import { slugify, buildWLUrl, buildLegacyUrl, getCharacteristics } from '../utils/helpers';
+import { getCharacteristics, resolvePrimaryLegacyVariant } from '../utils/helpers';
 
 interface ContextListProps {
   brand: Brand;
   contexts: MergedContext[];
+  contextUrlMappings: Map<string, ContextUrlMapping>;
   searchQueries: Map<string, SearchQuery>;
   onSelectContext: (ctx: MergedContext) => void;
   selectedTags: string[];
@@ -53,7 +54,16 @@ function getTagsForCharacteristic(key: string, value: string): string[] {
   return [];
 }
 
-export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searchQueries, onSelectContext, selectedTags, onSelectedTagsChange, savedScrollPosition }) => {
+export const ContextList: React.FC<ContextListProps> = ({
+  brand,
+  contexts,
+  contextUrlMappings,
+  searchQueries,
+  onSelectContext,
+  selectedTags,
+  onSelectedTagsChange,
+  savedScrollPosition,
+}) => {
   const t = useTranslation(brand.locale);
   const [query, setQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
@@ -109,13 +119,34 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
   const allUrls = useMemo(() => {
     const urls = new Set<string>();
     contexts.forEach(ctx => {
-      const wl = buildWLUrl(ctx).template;
-      const legacy = buildLegacyUrl(ctx).template;
-      urls.add(`WL:${wl}`);
-      urls.add(`Legacy:${legacy}`);
+      const mapping = contextUrlMappings.get(ctx.id);
+      if (!mapping) return;
+      if (mapping.wlUrlPath) urls.add(`WL:${mapping.wlUrlPath}`);
+      mapping.legacyVariants.forEach(variant => {
+        if (variant.legacyUrlPattern) {
+          urls.add(`Legacy:${variant.legacyUrlPattern}`);
+        }
+      });
     });
     return Array.from(urls).sort();
-  }, [contexts]);
+  }, [contexts, contextUrlMappings]);
+
+  const urlMappingStats = useMemo(() => {
+    let mapped = 0;
+    let wlOnly = 0;
+    let multiGeo = 0;
+
+    contexts.forEach(ctx => {
+      const mapping = contextUrlMappings.get(ctx.id);
+      if (!mapping) return;
+
+      if (mapping.mappingStatus === 'MAPPED') mapped += 1;
+      if (mapping.mappingStatus === 'WL_ONLY') wlOnly += 1;
+      if (mapping.legacyVariants.length > 1) multiGeo += 1;
+    });
+
+    return { mapped, wlOnly, multiGeo };
+  }, [contexts, contextUrlMappings]);
 
   // Filter suggestions based on query, exclude already selected
   // When query contains '/', suggest URLs instead of tags
@@ -141,8 +172,9 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
       const sq = searchQueries.get(ctx.id);
       return selectedTags.every(tag => {
         if (tag.startsWith('Alias:') && ctx.alias === tag.substring(6)) return true;
-        if (tag.startsWith('WL:') && buildWLUrl(ctx).template === tag.substring(3)) return true;
-        if (tag.startsWith('Legacy:') && buildLegacyUrl(ctx).template === tag.substring(7)) return true;
+        const mapping = contextUrlMappings.get(ctx.id);
+        if (tag.startsWith('WL:') && mapping?.wlUrlPath === tag.substring(3)) return true;
+        if (tag.startsWith('Legacy:') && mapping?.legacyVariants.some(v => v.legacyUrlPattern === tag.substring(7))) return true;
         if (tag.startsWith('Level:')) {
           const levelName = tag.substring(6);
           if (ctx.openedLevels.some(l => (levelNamesLocal[l] ?? l) === levelName)) return true;
@@ -196,7 +228,7 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
         return false;
       });
     });
-  }, [contexts, selectedTags, searchQueries]);
+  }, [contexts, contextUrlMappings, selectedTags, searchQueries]);
 
   const addTag = (tag: string) => {
     onSelectedTagsChange([...selectedTags, tag]);
@@ -213,6 +245,8 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
   const removeTag = (tag: string) => {
     onSelectedTagsChange(selectedTags.filter(t => t !== tag));
   };
+
+  const linkClassName = 'text-[11px] text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md block break-all font-mono leading-snug hover:underline';
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -235,6 +269,17 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
             <div>
               <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{t.contextManagement.title} — {brand.name}</h1>
               <p className="text-xs text-gray-500 mt-0.5 font-medium">{filteredContexts.length} / {contexts.length} contexts</p>
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200/60">
+                  mapped: {urlMappingStats.mapped}
+                </span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-50 text-amber-700 ring-1 ring-amber-200/60">
+                  WL-only: {urlMappingStats.wlOnly}
+                </span>
+                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-violet-50 text-violet-700 ring-1 ring-violet-200/60">
+                  multi-geo legacy: {urlMappingStats.multiGeo}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -320,10 +365,10 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
                 <tbody>
                   {filteredContexts.map((ctx, idx) => {
                     const sq = searchQueries.get(ctx.id);
-                    const wl = buildWLUrl(ctx);
-                    const legacy = buildLegacyUrl(ctx);
+                    const mapping = contextUrlMappings.get(ctx.id);
                     const chars = getCharacteristics(sq);
                     const isEven = idx % 2 === 0;
+                    const primaryLegacy = resolvePrimaryLegacyVariant(ctx, mapping);
 
                     // Get distribution types from SearchQuery
                     const distTypes = sq?.distributionTypes ? sq.distributionTypes.split(',').map(v => v.trim()) : [];
@@ -435,16 +480,54 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
                         {/* WL Url */}
                         <td className="px-5 py-3 min-w-[220px] border-b border-r border-gray-200 align-middle">
                           <div className="space-y-1.5">
-                            <code className="text-[11px] text-gray-600 bg-gray-100 px-2 py-1 rounded-md block break-all font-mono leading-snug">{wl.template}</code>
-                            <code className="text-[11px] text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md block break-all font-mono leading-snug">{wl.example}</code>
+                            <code className="text-[11px] text-gray-600 bg-gray-100 px-2 py-1 rounded-md block break-all font-mono leading-snug">
+                              {mapping?.wlUrlPath || '—'}
+                            </code>
+                            {mapping?.wlExampleUrl ? (
+                              <a
+                                href={mapping.wlExampleUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={linkClassName}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {mapping.wlExampleUrl}
+                              </a>
+                            ) : (
+                              <code className={linkClassName}>—</code>
+                            )}
                           </div>
                         </td>
 
                         {/* Legacy Url */}
                         <td className="px-5 py-3 min-w-[240px] border-b border-r border-gray-200 align-middle">
                           <div className="space-y-1.5">
-                            <code className="text-[11px] text-gray-600 bg-gray-100 px-2 py-1 rounded-md block break-all font-mono leading-snug">{legacy.template}</code>
-                            <code className="text-[11px] text-indigo-600 bg-indigo-50 px-2 py-1 rounded-md block break-all font-mono leading-snug">{legacy.example}</code>
+                            <code className="text-[11px] text-gray-600 bg-gray-100 px-2 py-1 rounded-md block break-all font-mono leading-snug">
+                              {primaryLegacy?.legacyUrlPattern || '—'}
+                            </code>
+                            {primaryLegacy?.legacyExampleUrl ? (
+                              <a
+                                href={primaryLegacy.legacyExampleUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={linkClassName}
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {primaryLegacy.legacyExampleUrl}
+                              </a>
+                            ) : (
+                              <code className={linkClassName}>—</code>
+                            )}
+                            {mapping && mapping.legacyVariants.length > 1 && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-50 text-amber-700 ring-1 ring-amber-200/60">
+                                {mapping.legacyVariants.length} geo variants
+                              </span>
+                            )}
+                            {mapping?.mappingStatus === 'WL_ONLY' && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-rose-50 text-rose-700 ring-1 ring-rose-200/60">
+                                WL only (no legacy)
+                              </span>
+                            )}
                           </div>
                         </td>
 
