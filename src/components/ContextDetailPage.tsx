@@ -1,12 +1,11 @@
 import React from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { Brand } from '../data/brands';
-import { MergedContext, SearchQuery, LinkBoxCluster } from '../data/csvParser';
-import { slugify, buildWLUrl, buildLegacyUrl, getCharacteristics } from '../utils/helpers';
+import { MergedContext, SearchQuery, LinkBoxCluster, ContextUrlMapping } from '../data/csvParser';
+import { getCharacteristics } from '../utils/helpers';
 
 interface ContextDetailPageProps {
-  brand: Brand;
   context: MergedContext;
+  urlMapping?: ContextUrlMapping;
   searchQuery?: SearchQuery;
   linkBoxClusters: LinkBoxCluster[];
   contextMap: Map<string, MergedContext>;
@@ -14,9 +13,41 @@ interface ContextDetailPageProps {
   onBack: () => void;
 }
 
-export const ContextDetailPage: React.FC<ContextDetailPageProps> = ({ brand: _brand, context: ctx, searchQuery: sq, linkBoxClusters, contextMap, searchQueriesMap, onBack }) => {
-  const wl = buildWLUrl(ctx);
-  const legacy = buildLegacyUrl(ctx);
+export const ContextDetailPage: React.FC<ContextDetailPageProps> = ({ context: ctx, urlMapping, searchQuery: sq, linkBoxClusters, contextMap, searchQueriesMap, onBack }) => {
+  const legacyVariants = urlMapping?.legacyVariants ?? [];
+  const geoExamples = urlMapping?.geoExamples ?? [];
+  const geoLevelOrder: Record<string, number> = {
+    country: 1,
+    macroregion: 2,
+    region: 3,
+    microregion: 4,
+    province: 5,
+    municipality: 6,
+    borough: 7,
+    neighborhood: 8,
+    microneighborhood: 9,
+    bloc: 10,
+  };
+  const sortedGeoExamples = [...geoExamples].sort((a, b) => {
+    const normA = a.geoLevel.toLowerCase().replace(/[^a-z]/g, '');
+    const normB = b.geoLevel.toLowerCase().replace(/[^a-z]/g, '');
+    const rankA = geoLevelOrder[normA] ?? 999;
+    const rankB = geoLevelOrder[normB] ?? 999;
+    if (rankA !== rankB) return rankA - rankB;
+    return a.locationName.localeCompare(b.locationName);
+  });
+
+  const normalizeGeoLevel = (value: string) => value.toLowerCase().replace(/[^a-z]/g, '');
+  const getLegacyPatternForGeoLevel = (geoLevel: string): string => {
+    const normalizedGeo = normalizeGeoLevel(geoLevel);
+    if (!normalizedGeo) return '';
+    const exact = legacyVariants.find(v => normalizeGeoLevel(v.geoLevels) === normalizedGeo);
+    if (exact?.legacyUrlPattern) return exact.legacyUrlPattern;
+    const contains = legacyVariants.find(v =>
+      v.geoLevels.split('|').some(level => normalizeGeoLevel(level) === normalizedGeo),
+    );
+    return contains?.legacyUrlPattern || '';
+  };
 
   const matchingClusters = linkBoxClusters
     .filter(c => c.currentContextIds.includes(ctx.id))
@@ -138,18 +169,76 @@ export const ContextDetailPage: React.FC<ContextDetailPageProps> = ({ brand: _br
               ))}
             </div>
 
-            {/* URLs */}
-            <div className="mt-6 pt-5 border-t border-gray-100 grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <p className="text-[10px] font-bold uppercase text-gray-400 tracking-wide mb-2">WL URL</p>
-                <code className="text-[11px] text-gray-600 bg-gray-100 px-3 py-1.5 rounded-md block break-all font-mono leading-snug">{wl.template}</code>
-                <code className="text-[11px] text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-md block break-all font-mono leading-snug mt-1.5">{wl.example}</code>
-              </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase text-gray-400 tracking-wide mb-2">Legacy URL</p>
-                <code className="text-[11px] text-gray-600 bg-gray-100 px-3 py-1.5 rounded-md block break-all font-mono leading-snug">{legacy.template}</code>
-                <code className="text-[11px] text-indigo-600 bg-indigo-50 px-3 py-1.5 rounded-md block break-all font-mono leading-snug mt-1.5">{legacy.example}</code>
-              </div>
+            <div className="mt-6 pt-5 border-t border-gray-100">
+              <p className="text-[10px] font-bold uppercase text-gray-400 tracking-wide mb-2">Geo Level Examples</p>
+              {sortedGeoExamples.length === 0 ? (
+                <p className="text-sm text-gray-400">No geo-level examples available</p>
+              ) : (
+                <div className="rounded-lg border border-gray-200/80 overflow-hidden">
+                  <table className="w-full text-sm border-collapse">
+                    <thead>
+                      <tr className="bg-gray-50/80">
+                        <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-3 py-2 border-b border-gray-200/60">Geo Level</th>
+                        <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-3 py-2 border-b border-gray-200/60">Location</th>
+                        <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-3 py-2 border-b border-gray-200/60">WL Example</th>
+                        <th className="text-left text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-3 py-2 border-b border-gray-200/60">Legacy Example</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sortedGeoExamples.map((example, idx) => (
+                        <tr key={`${example.geoLevel}-${example.locationAvivGeoId}-${idx}`} className={idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}>
+                          <td className="px-3 py-2 border-b border-gray-100 align-top">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-violet-50 text-violet-700 ring-1 ring-violet-200/60">
+                              {example.geoLevel || 'Unknown'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-2 border-b border-gray-100 align-top">
+                            <p className="text-[11px] text-gray-700 font-medium">{example.locationName || 'Unknown location'}</p>
+                            <p className="text-[10px] text-gray-400 mt-0.5">{example.locationAvivGeoId || 'n/a'}</p>
+                          </td>
+                          <td className="px-3 py-2 border-b border-gray-100 align-top">
+                            {example.wlUrlExample ? (
+                              <a
+                                href={example.wlUrlExample}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[11px] text-indigo-600 hover:underline break-all font-mono leading-snug"
+                              >
+                                {example.wlUrlExample}
+                              </a>
+                            ) : (
+                              <span className="text-[11px] text-gray-300">—</span>
+                            )}
+                          </td>
+                          <td className="px-3 py-2 border-b border-gray-100 align-top">
+                            {getLegacyPatternForGeoLevel(example.geoLevel) ? (
+                              <code className="text-[11px] text-gray-700 bg-gray-100 px-2 py-1 rounded-md block break-all font-mono leading-snug mb-1.5">
+                                {getLegacyPatternForGeoLevel(example.geoLevel)}
+                              </code>
+                            ) : (
+                              <span className="text-[11px] text-gray-300 block mb-1.5">No legacy pattern</span>
+                            )}
+                            {example.legacyUrlExample ? (
+                              <a
+                                href={example.legacyUrlExample}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-[11px] text-indigo-600 hover:underline break-all font-mono leading-snug"
+                              >
+                                {example.legacyUrlExample}
+                              </a>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-semibold bg-amber-50 text-amber-700 ring-1 ring-amber-200/60">
+                                No legacy example for this geo level
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           </div>
         </div>
