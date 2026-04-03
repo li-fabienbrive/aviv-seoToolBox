@@ -1,4 +1,6 @@
-import React from 'react';
+'use client';
+
+import type React from 'react';
 import { Database } from 'lucide-react';
 import { Brand } from '../data/brands';
 

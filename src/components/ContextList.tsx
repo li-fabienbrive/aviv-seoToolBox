@@ -1,9 +1,11 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+'use client';
+
+import type React from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { X, Filter } from 'lucide-react';
 import { Brand } from '../data/brands';
 import { MergedContext, SearchQuery, levelNames } from '../data/csvParser';
-import { useTranslation } from '../i18n/translations';
-import { slugify, buildWLUrl, buildLegacyUrl, getCharacteristics } from '../utils/helpers';
+import { buildWLUrl, buildLegacyUrl, getCharacteristics } from '../utils/helpers';
 
 interface ContextListProps {
   brand: Brand;
@@ -54,7 +56,6 @@ function getTagsForCharacteristic(key: string, value: string): string[] {
 }
 
 export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searchQueries, onSelectContext, selectedTags, onSelectedTagsChange, savedScrollPosition }) => {
-  const t = useTranslation(brand.locale);
   const [query, setQuery] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -233,7 +234,7 @@ export const ContextList: React.FC<ContextListProps> = ({ brand, contexts, searc
           <div className="flex items-center space-x-4">
             <div className={`w-3 h-3 rounded-full ${brand.colors.primary} ring-4 ring-opacity-20 ${brand.colors.secondary}`}></div>
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">{t.contextManagement.title} — {brand.name}</h1>
+              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Context Management — {brand.name}</h1>
               <p className="text-xs text-gray-500 mt-0.5 font-medium">{filteredContexts.length} / {contexts.length} contexts</p>
             </div>
           </div>

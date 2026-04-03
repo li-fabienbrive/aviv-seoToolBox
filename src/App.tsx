@@ -1,4 +1,6 @@
-import React, { useState } from 'react';
+'use client';
+
+import { useState } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { TopBrandMenu } from './components/TopBrandMenu';
 import { ContextManagement } from './components/ContextManagement';

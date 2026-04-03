@@ -1,4 +1,6 @@
-import React from 'react';
+'use client';
+
+import type React from 'react';
 import { Brand } from '../data/brands';
 
 interface TopBrandMenuProps {

@@ -1,8 +1,10 @@
-import React from 'react';
+'use client';
+
+import type React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { Brand } from '../data/brands';
 import { MergedContext, SearchQuery, LinkBoxCluster } from '../data/csvParser';
-import { slugify, buildWLUrl, buildLegacyUrl, getCharacteristics } from '../utils/helpers';
+import { buildWLUrl, buildLegacyUrl, getCharacteristics } from '../utils/helpers';
 
 interface ContextDetailPageProps {
   brand: Brand;

@@ -1,21 +1,24 @@
-import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
+'use client';
+
+import type React from 'react';
+import { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { Brand } from '../data/brands';
 import { mergeContextData, MergedContext, parseSearchQueries, SearchQuery, parseLinkBoxClusters, LinkBoxCluster } from '../data/csvParser';
 import { ContextList } from './ContextList';
 import { ContextDetailPage } from './ContextDetailPage';
 
-import slContextCsv from '../data/sl/SerpContext.csv?raw';
-import slTextCsv from '../data/sl/SerpTextConfig.csv?raw';
-import slSearchQueriesCsv from '../data/sl/SerpSearchQueries.csv?raw';
-import liContextCsv from '../data/li/SerpContext.csv?raw';
-import liTextCsv from '../data/li/SerpTextConfig.csv?raw';
-import liSearchQueriesCsv from '../data/li/SerpSearchQueries.csv?raw';
-import iwtContextCsv from '../data/iwt/SerpContext.csv?raw';
-import iwtTextCsv from '../data/iwt/SerpTextConfig.csv?raw';
-import iwtSearchQueriesCsv from '../data/iwt/SerpSearchQueries.csv?raw';
-import slLinkBoxCsv from '../data/sl/SeoLinkBoxClusters.csv?raw';
-import liLinkBoxCsv from '../data/li/SeoLinkBoxClusters.csv?raw';
-import iwtLinkBoxCsv from '../data/iwt/SeoLinkBoxClusters.csv?raw';
+import slContextCsv from '../data/sl/SerpContext.csv';
+import slTextCsv from '../data/sl/SerpTextConfig.csv';
+import slSearchQueriesCsv from '../data/sl/SerpSearchQueries.csv';
+import liContextCsv from '../data/li/SerpContext.csv';
+import liTextCsv from '../data/li/SerpTextConfig.csv';
+import liSearchQueriesCsv from '../data/li/SerpSearchQueries.csv';
+import iwtContextCsv from '../data/iwt/SerpContext.csv';
+import iwtTextCsv from '../data/iwt/SerpTextConfig.csv';
+import iwtSearchQueriesCsv from '../data/iwt/SerpSearchQueries.csv';
+import slLinkBoxCsv from '../data/sl/SeoLinkBoxClusters.csv';
+import liLinkBoxCsv from '../data/li/SeoLinkBoxClusters.csv';
+import iwtLinkBoxCsv from '../data/iwt/SeoLinkBoxClusters.csv';
 
 const csvByBrand: Record<string, { context: string; text: string; searchQueries: string; linkBox: string }> = {
   sl: { context: slContextCsv, text: slTextCsv, searchQueries: slSearchQueriesCsv, linkBox: slLinkBoxCsv },
@@ -62,10 +65,6 @@ export const ContextManagement: React.FC<ContextManagementProps> = ({ brand }) =
     }
     setSelectedContext(ctx);
     history.pushState({ contextDetail: true }, '');
-  }, []);
-
-  const goBack = useCallback(() => {
-    setSelectedContext(null);
   }, []);
 
   // Handle browser back button

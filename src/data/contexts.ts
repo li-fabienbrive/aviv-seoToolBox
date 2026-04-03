@@ -52,12 +52,6 @@ function generateContexts(): Context[] {
   ];
 
   const propertyTypes = ['Appartement', 'Maison', 'Studio', 'Loft', 'Penthouse', 'Villa', 'Bureau', 'Local Commercial'];
-  const features = [
-    'BALCONY_TERRACE', 'BUILT-IN-KITCHEN', 'BATHROOM_WINDOW', 'VACANT',
-    'PETS_FRIENDLY', 'REDUCE_MOBILITY', 'PARKING_GARAGE', 'GARDEN',
-    'CELLAR', 'BATHTUB', 'ELEVATOR', 'COMMISSION_FREE', 'SWIMMINGPOOL'
-  ];
-  const projectTypes = ['NEW BUILD', 'INVESTMENT', 'TEMPORARY LIVING', 'STOCK', 'SHARED FLATS'];
   const distributionTypes = ['BUY', 'RENT', 'BUY+RENT'];
 
   const themeConfigs: Record<string, { priceMin: number; priceMax: number; features: string[]; projectTypes: string[] }> = {
@@ -108,7 +102,7 @@ function generateContexts(): Context[] {
   const contexts: Context[] = [];
   let contextId = 1;
 
-  themes.forEach((theme, themeIdx) => {
+  themes.forEach((theme) => {
     const themeConfig = themeConfigs[theme];
     for (let i = 0; i < 15; i++) {
       const location = locations[Math.floor(Math.random() * locations.length)];
